@@ -100,16 +100,16 @@ def main():
     # explain the test data
     # TODO: REVERT THIS TO NORMAL AFTER FINISHING
     X_explain = data['background']['X']['preprocessed'].toarray()
-
+    nruns = args.nruns if args.benchmark == 1 else 1
     # run sequential benchmark
     if args.cores == -1:
-        experiment(explainer, X_explain, distributed_opts, args.nruns)
+        experiment(explainer, X_explain, distributed_opts, nruns)
     # run distributed benchmark or simply explain on a number of cores, depeding on args.benchmark value
     else:
         cores_range = range(2, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
         for ncores in cores_range:
             logging.info(f"Running experiment on {ncores}")
-            experiment(explainer, X_explain, distributed_opts, args.nruns)
+            experiment(explainer, X_explain, distributed_opts, nruns)
             ray.shutdown()
             distributed_opts['ncpus'] = ncores + 1
             explainer = fit_kernel_shap_explainer(lr_predictor, data, distributed_opts)
