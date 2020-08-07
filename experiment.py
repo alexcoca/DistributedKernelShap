@@ -6,12 +6,12 @@ import ray
 
 import numpy as np
 
-from kernel_shap import KernelShap
+from explainers.kernel_shap import KernelShap
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from typing import Any, Dict
 from timeit import default_timer as timer
-from utils import get_filename, load_data
+from utils.utils import get_filename, load_data
 
 
 logging.basicConfig(level=logging.INFO)
@@ -98,8 +98,7 @@ def main():
         distributed_opts = {'batch_size': args.batch_size, 'n_cpus': args.cores, 'actor_cpu_fraction': 1.0}
     explainer = fit_kernel_shap_explainer(lr_predictor, data, distributed_opts=distributed_opts)
     # explain the test data
-    # TODO: REVERT THIS TO NORMAL AFTER FINISHING
-    X_explain = data['background']['X']['preprocessed'].toarray()
+    X_explain = data['all']['X']['processed']['test'].toarray()
     nruns = args.nruns if args.benchmark == 1 else 1
     # run sequential benchmark
     if args.cores == -1:

@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 from shap import KernelExplainer
 
-from api import DEFAULT_META_KERNEL_SHAP, DEFAULT_DATA_KERNEL_SHAP, Explanation, Explainer, FitMixin
-from utils import methdispatch
-from distributed import DistributedExplainer
+from api.interfaces import DEFAULT_META_KERNEL_SHAP, DEFAULT_DATA_KERNEL_SHAP, Explanation, Explainer, FitMixin
+from utils.utils import methdispatch
+from utils.distributed import DistributedExplainer
 from functools import partial
 from scipy import sparse
 from shap.common import DenseData, DenseDataWithIndex, convert_to_link

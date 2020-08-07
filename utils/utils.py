@@ -89,8 +89,8 @@ def load_data():
         raw_data = download_data()
         data['all'] = pickle.load(io.BytesIO(raw_data[0].content))
         data['background'] = pickle.load(io.BytesIO(raw_data[1].content))
-        if not os.path.exists('data'):
-            os.mkdir('data')
+        if not os.path.exists('../data'):
+            os.mkdir('../data')
         with open('data/adult_background.pkl', 'wb') as f:
             pickle.dump(data['background'], f)
         with open('data/adult_processed.pkl', 'wb') as f:
