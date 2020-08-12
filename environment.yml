@@ -26,13 +26,20 @@ dependencies:
     - async-timeout==3.0.1
     - attrs==19.3.0
     - beautifulsoup4==4.9.1
+    - blist==1.3.6
     - click==7.1.2
     - colorama==0.4.3
     - colorful==0.5.4
     - filelock==3.0.12
+    - flask==1.1.2
     - google==3.0.0
+    - h11==0.9.0
+    - httptools==0.1.1
+    - itsdangerous==1.1.0
+    - jinja2==2.11.2
     - joblib==0.16.0
     - jsonschema==3.2.0
+    - markupsafe==1.1.1
     - msgpack==1.0.0
     - multidict==4.7.6
     - pandas==1.1.0
@@ -51,5 +58,7 @@ dependencies:
     - threadpoolctl==2.1.0
     - tqdm==4.48.2
     - typing-extensions==3.7.4.2
+    - uvicorn==0.11.8
+    - uvloop==0.14.0
+    - websockets==8.1
     - yarl==1.5.1
-

@@ -12,7 +12,7 @@ from requests import RequestException
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
 from typing import Any, Dict, List, Tuple, Union
-from utils import Bunch
+from utils.utils import Bunch
 
 logger = logging.getLogger(__name__)
 
@@ -158,7 +158,7 @@ def preprocess_adult_dataset(dataset, seed=0, n_train_examples=30000) -> Dict[st
     """
 
     logging.info("Splitting data...")
-    # split data
+
     np.random.seed(seed)
     data = dataset.data
     target = dataset.target
@@ -169,6 +169,7 @@ def preprocess_adult_dataset(dataset, seed=0, n_train_examples=30000) -> Dict[st
     X_train, y_train = data[:n_train_examples, :], target[:n_train_examples]
     X_test, y_test = data[n_train_examples + 1:, :], target[n_train_examples + 1:]
 
+    logging.info("Transforming data...")
     category_map = dataset.category_map
     feature_names = dataset.feature_names
 
@@ -189,6 +190,29 @@ def preprocess_adult_dataset(dataset, seed=0, n_train_examples=30000) -> Dict[st
     X_train_proc = preprocessor.transform(X_train)
     X_test_proc = preprocessor.transform(X_test)
 
+    # create groups for categorical variables
+    numerical_feats_idx = preprocessor.transformers_[0][2]
+    categorical_feats_idx = preprocessor.transformers_[1][2]
+    ohe = preprocessor.transformers_[1][1]
+
+    # compute encoded dimension; -1 as ohe is setup with drop='first'
+    feat_enc_dim = [len(cat_enc) - 1 for cat_enc in ohe.categories_]
+    num_feats_names = [feature_names[i] for i in numerical_feats_idx]
+    cat_feats_names = [feature_names[i] for i in categorical_feats_idx]
+
+    group_names = num_feats_names + cat_feats_names
+    # each sublist contains the col. indices for each variable in group_names
+    groups = []
+    cat_var_idx = 0
+
+    for name in group_names:
+        if name in num_feats_names:
+            groups.append(list(range(len(groups), len(groups) + 1)))
+        else:
+            start_idx = groups[-1][-1] + 1 if groups else 0
+            groups.append(list(range(start_idx, start_idx + feat_enc_dim[cat_var_idx])))
+            cat_var_idx += 1
+
     return {
         'X': {
             'raw': {'train': X_train, 'test': X_test},
@@ -196,13 +220,15 @@ def preprocess_adult_dataset(dataset, seed=0, n_train_examples=30000) -> Dict[st
         'y': {'train': y_train, 'test': y_test},
         'preprocessor': preprocessor,
         'orig_feature_names': feature_names,
+        'groups': groups,
+        'group_names': group_names,
     }
 
 
 def main():
 
-    if not os.path.exists('data'):
-        os.mkdir('data')
+    if not os.path.exists('../data'):
+        os.mkdir('../data')
 
     # load and preprocess data
     adult_dataset = load_adult_dataset()
@@ -213,9 +239,9 @@ def main():
     background_dataset['X']['raw'] = adult_preprocessed['X']['raw']['train'][0:n_examples, :]
     background_dataset['X']['preprocessed'] = adult_preprocessed['X']['processed']['train'][0:n_examples, :]
     background_dataset['y'] = adult_preprocessed['y']['train'][0:n_examples]
-    with open('data/adult_background.pkl', 'wb') as f:
+    with open('../data/adult_background.pkl', 'wb') as f:
         pickle.dump(background_dataset, f)
-    with open('data/adult_processed.pkl', 'wb') as f:
+    with open('../data/adult_processed.pkl', 'wb') as f:
         pickle.dump(adult_preprocessed, f)
 
 

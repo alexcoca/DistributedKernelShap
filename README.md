@@ -1,23 +1,24 @@
-# Running distributed KernelSHAP
+# Running distributed KernelSHAP with Ray Serve
 
-To create a virtual environment that allows you to run KernelSHAP in a distributed fashion with [`ray`](https://github.com/ray-project/ray) you need to configure your environment first, which requires [`conda`](https://problemsolvingwithpython.com/01-Orientation/01.05-Installing-Anaconda-on-Linux/) to be installed. You can then run the command::
+To create a virtual environment that allows you to run KernelSHAP in a distributed fashion with [`ray serve`](https://github.com/ray-project/ray) you need to configure your environment first, which requires [`conda`](https://problemsolvingwithpython.com/01-Orientation/01.05-Installing-Anaconda-on-Linux/) to be installed. You can then run the command::
 
 `conda env create -f environment.yml -p /home/user/anaconda3/envs/env_name`
 
 to create the environment and then activate it with `conda activate shap`. If you don not wish to change the installation path then you can skip the `-p` option. You are now ready to run the experiments. The steps involved are:
 
 1. data processing 
-2. running the experiments
+2. predictor fitting
+2. running benchmarking experiments
 
-To process the data it is sufficient to run `python preprocess_data.py` with the default options. This will output a preprocessed version of the [`Adult`](http://archive.ics.uci.edu/ml/datasets/Adult) dataset and a partition of it that is used to initialise the KernelSHAP explainer. However, you can proceed to step 2 if you don't intend to change the default parameters as the same data will be automatically downloaded.
+*Step 1 (optional):* To process the data it is sufficient to run `python scripts/preprocess_data.py` with the default options. This will output a preprocessed version of the [`Adult`](http://archive.ics.uci.edu/ml/datasets/Adult) dataset and a partition of it that is used to initialise the KernelSHAP explainer. However, you can proceed to step 2 if you don't intend to change the default parameters as the same data will be automatically downloaded.
 
-You can run an experiment with the command `python experiment.py`. By default, this will run the explainer on the `2560` examples from the `Adult` dataset with a background dataset with `100` samples, sequentially (5 times if the `-benchmark 1` option is passed to it). The resuults are saved in the `results/` folder. If you wish to run the same explanations in parallel, then run the command
+*Step 2 (optional):* A logistic regression predictor can be fit on the preprocessed data by running `python scripts/fit_adult_model.py`. The predictor will be saved in the `assets/` directory under the `predictor.pkl` filename. If you did not alter the data processing script, it is not necessary to run this script as the predictor will be automatically downloaded and saved to `assets/`.
 
-`python experiment.py -cores 3`
 
-which will use `ray` to perform explanations across multiple cores.
+*Step 3:* You can distribute the task of explaining `2560` examples for the Adult (our test split) with KernelSHAP configured with a background dataset of `100` samples by running the `serve_explanations` script. The configurable options are:
 
-Other options for the script are:
+- `-replicas`: controls how many explainer replicas will serve the requests
 
-- `-benchmark`: if set to 1, `-cores` will be treated as the upper bound of number of cores to compute the explanations on. The lower bound is `2`, and the explanations are computed 5 times (by default) to provide runtime averages. The number of repetitions can be controlled using the `-nruns` argument.
-- `-batch_size`: controls how many instances are explained by a core at once. This parameter has an important bearing to the code runtime performance
+- `-max_batch_size`: sending a batch of requests as opposed to a single request to one replica can improve performance. Use this argument to optimize the maximum size of a batch of requests sent to each replica. 
+- `-benchmark`: if set to `1`, this algorithm will run the experiment over an increasingly large number of replicas. The replicas range is `range(1, -replicas + 1)`. For each number of replicas and each value in `-max_batch_size` the experiment is repeated to obtain runtime averages.
+- `-nruns`: controls how many times an experiment with a given `-replicas` setting is run for each value in the `-max_batch_size` array. This allows obtaining the average runtimes for the task. This setting only takes effect only if the option `-benchmark 1` is specified.

@@ -8,10 +8,12 @@ from functools import singledispatch, update_wrapper
 from typing import Callable
 
 
-EXPLANATIONS_SET = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
-BACKGROUND_SET = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_background.pkl'
+EXPLANATIONS_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
+BACKGROUND_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_background.pkl'
+MODEL_URL = 'https://storage.googleapis.com/seldon-models/alibi/distributed_kernel_shap/predictor.pkl'
 EXPLANATIONS_SET_LOCAL = 'data/adult_processed.pkl'
 BACKGROUND_SET_LOCAL = 'data/adult_background.pkl'
+MODEL_LOCAL = 'assets/predictor.pkl'
 
 
 class Bunch(dict):
@@ -59,23 +61,24 @@ def methdispatch(func: Callable):
     return wrapper
 
 
-def download_data():
-    """ Download datasets from Seldon GC bucket."""
-    resp = []
+def download(path: str):
+    """ Download from Seldon GC bucket indicated by `path`."""
+
     try:
-        resp.append(requests.get(EXPLANATIONS_SET))
-        resp.append(requests.get(BACKGROUND_SET))
-        for r in resp:
-            r.raise_for_status()
+        resp = requests.get(path)
+        resp.raise_for_status()
     except requests.RequestException:
-        logging.exception("Could not connect to bucket, URL may be out of service")
+        logging.exception("Could not connect to bucket, URL may be out of service!")
         raise ConnectionError
 
     return resp
 
 
 def load_data():
-    """Load data to be explained."""
+    """
+    Load instances to be explained and background data from the data/ directory if they exist, otherwise download
+    from Seldon Google Cloud bucket.
+    """
 
     data = {'all': None, 'background': None}
     try:
@@ -84,11 +87,14 @@ def load_data():
         with open(EXPLANATIONS_SET_LOCAL, 'rb') as f:
             data['all'] = pickle.load(f)
     except FileNotFoundError:
-        logging.info(f"Downloading data from {EXPLANATIONS_SET}")
-        logging.info(f"Downloading data from {BACKGROUND_SET}")
-        raw_data = download_data()
-        data['all'] = pickle.load(io.BytesIO(raw_data[0].content))
-        data['background'] = pickle.load(io.BytesIO(raw_data[1].content))
+        logging.info(f"Downloading data from {EXPLANATIONS_SET_URL}")
+        all_data_raw = download(EXPLANATIONS_SET_URL)
+        data['all'] = pickle.load(io.BytesIO(all_data_raw.content))
+        logging.info(f"Downloading data from {BACKGROUND_SET_URL}")
+        background_data_raw = download(BACKGROUND_SET_URL)
+        data['background'] = pickle.load(io.BytesIO(background_data_raw.content))
+
+        # save the data locally so we don't download it every time we run the main script
         if not os.path.exists('../data'):
             os.mkdir('../data')
         with open('../data/adult_background.pkl', 'wb') as f:
@@ -99,12 +105,32 @@ def load_data():
     return data
 
 
+def load_model(path: str):
+    """
+    Load a model that has been saved locally or download a default model from a Seldon bucket.
+    """
+
+    try:
+        with open(path, "rb") as f:
+            model = pickle.load(f)
+        return model
+    except FileNotFoundError:
+        logging.info(f"Could not find model {path}. Downloading from {MODEL_URL}...")
+        model_raw = download(MODEL_URL)
+        model = pickle.load(io.BytesIO(model_raw.content))
+
+        if not os.path.exists('assets'):
+            os.mkdir('assets')
+
+        with open("assets/predictor.pkl", "wb") as f:
+            pickle.dump(model, f)
+
+        return model
+
+
 def get_filename(distributed_opts: dict):
     """Creates a filename for an experiment given `distributed_opts`."""
 
-    ncpus = distributed_opts['n_cpus']
-    if ncpus:
-        batch_size = distributed_opts['batch_size']
-        cpu_fraction = distributed_opts['actor_cpu_fraction']
-        return f"results/ray_ncpu_{ncpus}_bsize_{batch_size}_actorfr_{cpu_fraction}.pkl"
-    return "results/sequential.pkl"
+    replicas = distributed_opts['replicas']
+    max_batch = distributed_opts['max_batch_size']
+    return f"results/ray_replicas_{replicas}_maxbatch_{max_batch}.pkl"

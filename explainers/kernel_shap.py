@@ -8,7 +8,6 @@ from shap import KernelExplainer
 
 from api.interfaces import DEFAULT_META_KERNEL_SHAP, DEFAULT_DATA_KERNEL_SHAP, Explanation, Explainer, FitMixin
 from utils.utils import methdispatch
-from utils.distributed import DistributedExplainer
 from functools import partial
 from scipy import sparse
 from shap.common import DenseData, DenseDataWithIndex, convert_to_link
@@ -206,13 +205,6 @@ def sum_categories(values: np.ndarray, start_idx: Sequence[int], enc_feat_dim: S
     return np.add.reduceat(values, slices, axis=1)
 
 
-DISTRIBUTED_OPTS = {
-    'n_cpus': None,
-    'batch_size': None,
-    'actor_cpu_fraction': 1.0,
-}
-
-
 class KernelExplainerWrapper(KernelExplainer):
     """
     A wrapper around `shap.KernelExplainer` that supports:
@@ -266,8 +258,7 @@ class KernelShap(Explainer, FitMixin):
                  feature_names: Union[List[str], Tuple[str], None] = None,
                  categorical_names: Optional[Dict[int, List[str]]] = None,
                  task: str = 'classification',
-                 seed: int = None,
-                 distributed_opts: Optional[Dict] = None):
+                 seed: int = None):
         """
         A wrapper around the `shap.KernelExplainer` class. It extends the current `shap` library functionality
         by allowing the user to specify variable groups in order to treat one-hot encoded categorical as one during
@@ -307,24 +298,6 @@ class KernelShap(Explainer, FitMixin):
             `explanation.data['raw']['prediction']`
         seed
             Fixes the random number stream, which influences which subsets are sampled during shap value estimation.
-        distributed_opts
-            A dictionary with the following structure::
-
-                {
-                'n_cpus': None,
-                'batch_size': None,
-                }
-
-            The entries represent:
-                - `n_cpus`: an ``int`` representing the number of CPUs on which the input `X` to explain will be \
-                explained. If set to `None`, the code will run sequentially. 
-                - `batch_size`: and ``int`` representing how many instances should be explained on every CPU. If set to \
-                `None`, an input array is split in (roughly) equal parts and distributed across the available CPUs.
-
-            The distributed explanation works only the `ray`_ library is installed. 
-
-            .. _ray:
-               https://docs.ray.io/en/master/
 
         Raises
         ------
@@ -357,11 +330,6 @@ class KernelShap(Explainer, FitMixin):
         self.summarise_background = False
         # checks if it has been fitted:
         self._fitted = False
-        self.distributed_opts = copy.deepcopy(DISTRIBUTED_OPTS)
-        if distributed_opts:
-            self.distributed_opts.update(distributed_opts)
-        self.distributed_opts['algorithm'] = 'kernel_shap'
-        self.distribute = True if self.distributed_opts['n_cpus'] else False
 
     def _check_inputs(self,
                       background_data: Union[shap.common.Data, pd.DataFrame, np.ndarray, sparse.spmatrix],
@@ -768,21 +736,11 @@ class KernelShap(Explainer, FitMixin):
 
         # perform grouping if requested by the user
         self.background_data = self._get_data(background_data, group_names, groups, weights, **kwargs)
-        explainer_args = (self.predictor, self.background_data)
-        explainer_kwargs = {'link': self.link}
-        # distribute computation
-        if self.distribute:
-            # set seed for each process
-            explainer_kwargs['seed'] = self.seed
-            self._explainer = DistributedExplainer(
-                self.distributed_opts,
-                KernelExplainerWrapper,
-                explainer_args,
-                explainer_kwargs,
-            )  # type: DistributedExplainer
-        else:
-            self._explainer = KernelExplainerWrapper(*explainer_args,
-                                                     **explainer_kwargs)  # type: KernelExplainerWrapper # noqa: E501
+        self._explainer = shap.KernelExplainer(
+            self.predictor,
+            self.background_data,
+            link=self.link,
+        )  # type: shap.KernelExplainer
         self.expected_value = self._explainer.expected_value
         if not self._explainer.vector_out:
             logger.warning(
@@ -864,16 +822,10 @@ class KernelShap(Explainer, FitMixin):
                 "Called explain on an unfitted object! Please fit the explainer using the .fit method first!"
             )
 
-        if self.distribute:
-            if isinstance(X, sparse.spmatrix) or isinstance(X, pd.DataFrame):
-                raise TypeError(
-                    "Incorrect type for `X` due to distributed context. Cast `X` to np.ndarray."
-                )
-
         # convert data to dense format if sparse
         if self.use_groups and isinstance(X, sparse.spmatrix):
             X = X.toarray()
-        shap_values = self._explainer.get_explanation(X, **kwargs)
+        shap_values = self._explainer.shap_values(X, **kwargs)
         self.expected_value = self._explainer.expected_value
         expected_value = self.expected_value
         # for scalar model outputs a single numpy array is returned
