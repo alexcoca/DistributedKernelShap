@@ -10,12 +10,12 @@ to create the environment and then activate it with `conda activate shap`. If yo
 2. predictor fitting
 2. running benchmarking experiments
 
-*Step 1 (optional):* To process the data it is sufficient to run `python scripts/preprocess_data.py` with the default options. This will output a preprocessed version of the [`Adult`](http://archive.ics.uci.edu/ml/datasets/Adult) dataset and a partition of it that is used to initialise the KernelSHAP explainer. However, you can proceed to step 2 if you don't intend to change the default parameters as the same data will be automatically downloaded.
+_**Step 1 (optional):**_ To process the data it is sufficient to run `python scripts/preprocess_data.py` with the default options. This will output a preprocessed version of the [`Adult`](http://archive.ics.uci.edu/ml/datasets/Adult) dataset and a partition of it that is used to initialise the KernelSHAP explainer. However, you can proceed to step 2 if you don't intend to change the default parameters as the same data will be automatically downloaded.
 
-*Step 2 (optional):* A logistic regression predictor can be fit on the preprocessed data by running `python scripts/fit_adult_model.py`. The predictor will be saved in the `assets/` directory under the `predictor.pkl` filename. If you did not alter the data processing script, it is not necessary to run this script as the predictor will be automatically downloaded and saved to `assets/`.
+_**Step 2 (optional):**_ A logistic regression predictor can be fit on the preprocessed data by running `python scripts/fit_adult_model.py`. The predictor will be saved in the `assets/` directory under the `predictor.pkl` filename. If you did not alter the data processing script, it is not necessary to run this script as the predictor will be automatically downloaded and saved to `assets/`.
 
 
-*Step 3:* You can distribute the task of explaining `2560` examples for the Adult (our test split) with KernelSHAP configured with a background dataset of `100` samples by running the `serve_explanations` script. The configurable options are:
+_**Step 3:**_ You can distribute the task of explaining `2560` examples for the Adult (our test split) with KernelSHAP configured with a background dataset of `100` samples by running the `serve_explanations` script. The configurable options are:
 
 - `-replicas`: controls how many explainer replicas will serve the requests
 
