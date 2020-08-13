@@ -10,7 +10,7 @@ import numpy as np
 from collections import namedtuple
 from ray import serve
 from timeit import default_timer as timer
-from typing import Any, Dict
+from typing import Any, Dict, Tuple
 from utils.wrappers import BatchKernelShapModel, KernelShapModel
 from utils.utils import get_filename, load_data
 
@@ -39,7 +39,7 @@ def endpont_setup(tag: str, backend_tag: str, route: str = "/"):
     serve.create_endpoint(tag, backend=backend_tag, route=route, methods=["GET"])
 
 
-def backend_setup(tag: str, data: Dict[str, Any], replicas: int, max_batch_size: int) -> None:
+def backend_setup(tag: str, worker_args: Tuple, replicas: int, max_batch_size: int) -> None:
     """
     Setups the backend for the distributed explanation task.
 
@@ -47,8 +47,8 @@ def backend_setup(tag: str, data: Dict[str, Any], replicas: int, max_batch_size:
     ----------
     tag
         A tag for the backend component. The same tag must be passed to `endpoint_setup`.
-    data
-        A dictionary containing data from which explainer `fit` keyword arguments are extracted.
+    worker_args
+        A tuple containing the arguments for initialising the explainer and fitting it.
     replicas
         The number of backend replicas that serve explanations.
     max_batch_size
@@ -56,15 +56,6 @@ def backend_setup(tag: str, data: Dict[str, Any], replicas: int, max_batch_size:
     """
 
     serve.init()
-
-    # prepare explainer kwargs
-    groups = data['all']['groups']
-    group_names = data['all']['group_names']
-    background_data = data['background']['X']['preprocessed']
-    assert background_data.shape[0] == 100
-    init_kwargs = {'link': 'logit', 'feature_names': group_names, 'seed': 0}
-    fit_kwargs = {'groups': groups, 'group_names': group_names}
-    worker_args = (PREDICTOR_PATH, background_data, init_kwargs, fit_kwargs)
 
     if max_batch_size == 1:
         config = {'num_replicas': max(replicas, 1)}
@@ -77,8 +68,35 @@ def backend_setup(tag: str, data: Dict[str, Any], replicas: int, max_batch_size:
     logging.info(f"Backends: {serve.list_backends()}")
 
 
+def prepare_explainer_args(data: Dict[str, Any]) -> Tuple[str, np.ndarray, dict, dict]:
+    """
+    Extracts the name of the features (group_names) and the columns corresponding to each feature in the faeture matrix
+    (group_names) from the `data` dict and defines the explainer arguments. The background data necessary to initialise
+    the explainer is also extracted from the same dictionary.
+
+    Parameters
+    ----------
+    data
+        A dictionary that contains all information necessary to initialise the explainer.
+
+    Returns
+    -------
+    A tuple containing the positional and keyword arguments necessary for initialising the explainers.
+    """
+
+    groups = data['all']['groups']
+    group_names = data['all']['group_names']
+    background_data = data['background']['X']['preprocessed']
+    assert background_data.shape[0] == 100
+    init_kwargs = {'link': 'logit', 'feature_names': group_names, 'seed': 0}
+    fit_kwargs = {'groups': groups, 'group_names': group_names}
+    worker_args = (PREDICTOR_PATH, background_data, init_kwargs, fit_kwargs)
+
+    return worker_args
+
+
 @ray.remote
-def distribute_request(instance: np.ndarray, url: str = "http://localhost:8000/explain") -> str:
+def distribute_request(instance: np.ndarray, url: str = "http://localhost:8000") -> str:
     """
     Task for distributing the explanations across the backend.
 
@@ -127,7 +145,7 @@ def explain(data: np.ndarray, *, url: str) -> namedtuple:
     return run_output(responses=responses, t_elapsed=t_elapsed)
 
 
-def distribute_explanations(n_runs: int, replicas: int, max_batch_size: int):
+def distribute_explanations(n_runs: int, replicas: int, max_batch_size: int, address: str = "http://localhost:8000"):
     """
     Setup an endpoint and a backend and send requests to the endpoint.
 
@@ -138,22 +156,26 @@ def distribute_explanations(n_runs: int, replicas: int, max_batch_size: int):
         Used to determine the average runtime given the number of cores.
     replicas
         How many backend replicas should be used for distributing the workload
-    max_batch_size:
+    max_batch_size
         The maximum batch size the explainer accepts.
+    address
+        The url for the explainer endpoint.
     """
 
     result = {'t_elapsed': [], 'explanations': []}
+    route = "explain"
     backend_tag = "kernel_shap:b100"  # b100 means 100 background samples
     endpoint_tag = f"{backend_tag}_endpoint"
     data = load_data()
-    backend_setup(backend_tag, data, replicas, max_batch_size)
-    endpont_setup(endpoint_tag, backend_tag, route="/explain")
+    worker_args = prepare_explainer_args(data)
+    backend_setup(backend_tag, worker_args, replicas, max_batch_size)
+    endpont_setup(endpoint_tag, backend_tag, route=f"/{route}")
     # extract instances to be explained from the dataset
     X_explain = data['all']['X']['processed']['test'].toarray()
     assert X_explain.shape[0] == 2560
     for run in range(n_runs):
         logging.info(f"Experiment run: {run}")
-        results = explain(X_explain, url="http://localhost:8000/explain")
+        results = explain(X_explain, url=f"{address}/{route}")
         result['t_elapsed'].append(results.t_elapsed)
         result['explanations'].append(results.responses)
 
@@ -168,17 +190,18 @@ def main():
     if not os.path.exists('results'):
         os.mkdir('results')
 
+    address = f"{args.host}:{args.port}"
     batch_size_limits = [int(elem) for elem in args.max_batch_size]
     if args.benchmark:
         for replicas in range(1, args.replicas + 1):
             logging.info(f"Running on {replicas} backend replicas!")
             for max_batch_size in batch_size_limits:
                 logging.info(f"Batching with max_batch_size of {max_batch_size}")
-                distribute_explanations(args.nruns, replicas, max_batch_size)
+                distribute_explanations(args.nruns, replicas, max_batch_size, address=address)
     else:
         nruns = 1
         for max_batch_size in batch_size_limits:
-            distribute_explanations(nruns, args.replicas, max_batch_size)
+            distribute_explanations(nruns, args.replicas, max_batch_size, address=address)
 
 
 if __name__ == '__main__':
@@ -209,6 +232,17 @@ if __name__ == '__main__':
         help="Controls how many times an experiment is run (in benchmark mode) for a given number of cores to obtain "
              "run statistics."
     )
-
+    parser.add_argument(
+        "-h, --host",
+        default="http://localhost",
+        type=str,
+        help="Hostname"
+    )
+    parser.add_argument(
+        "-p, --port",
+        default="8000",
+        type=str,
+        help="Port"
+    )
     args = parser.parse_args()
     main()
