@@ -5,6 +5,7 @@ import pickle
 import ray
 
 import numpy as np
+from sklearn.metrics import accuracy_score
 
 from explainers.kernel_shap import KernelShap
 from typing import Any, Dict
@@ -31,37 +32,11 @@ def fit_kernel_shap_explainer(clf, data: dict, distributed_opts: Dict[str, Any] 
     """
 
     pred_fcn = clf.predict_proba
-    group_names, groups = data['groups_names'], data['groups']
-    explainer = KernelShap(pred_fcn, link='logit', feature_names=group_names, distributed_opts=distributed_opts)
+    group_names, groups = data['all']['group_names'], data['all']['groups']
+    explainer = KernelShap(pred_fcn, link='logit', feature_names=group_names, distributed_opts=distributed_opts, seed=0)
     explainer.fit(data['background']['X']['preprocessed'], group_names=group_names, groups=groups)
 
     return explainer
-
-
-def main():
-
-    data = load_data()
-    predictor = load_model('assets/predictor.pkl')
-    if args.cores == -1:
-        distributed_opts = {'batch_size': None, 'n_cpus': None, 'actor_cpu_fraction': 1.0}
-    else:
-        distributed_opts = {'batch_size': args.batch_size, 'n_cpus': args.cores, 'actor_cpu_fraction': 1.0}
-    explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts=distributed_opts)
-    # explain the test data
-    X_explain = data['all']['X']['processed']['test'].toarray()
-    nruns = args.nruns if args.benchmark == 1 else 1
-    # run sequential benchmark
-    if args.cores == -1:
-        experiment(explainer, X_explain, distributed_opts, nruns)
-    # run distributed benchmark or simply explain on a number of cores, depeding on args.benchmark value
-    else:
-        cores_range = range(2, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
-        for ncores in cores_range:
-            logging.info(f"Running experiment on {ncores}")
-            experiment(explainer, X_explain, distributed_opts, nruns)
-            ray.shutdown()
-            distributed_opts['ncpus'] = ncores + 1
-            explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
 
 
 def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: int):
@@ -87,13 +62,42 @@ def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: 
         pickle.dump(result, f)
 
 
+def main():
+
+    nruns = args.nruns if args.benchmark == 1 else 1
+    batch_sizes = [int(elem) for elem in args.batch]
+
+    data = load_data()
+    predictor = load_model('assets/predictor.pkl')  # download if not available locally
+    y_test, X_test_proc = data['all']['y']['test'], data['all']['X']['processed']['test']
+    logging.info(f"Test accuracy: {accuracy_score(y_test, predictor.predict(X_test_proc))}")
+
+    X_explain = data['all']['X']['processed']['test'].toarray()  # instances to be explained
+
+    if args.cores == -1:  # sequential benchmark
+        distributed_opts = {'batch_size': None, 'n_cpus': None, 'actor_cpu_fraction': 1.0}
+        explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts=distributed_opts)
+        experiment(explainer, X_explain, distributed_opts, nruns)
+    # run distributed benchmark or simply explain on a number of cores, depeding on args.benchmark value
+    else:
+        cores_range = range(2, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
+        for ncores in cores_range:
+            for batch_size in batch_sizes:
+                distributed_opts = {'batch_size': int(batch_size), 'n_cpus': ncores, 'actor_cpu_fraction': 1.0}
+                explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
+                logging.info(f"Running experiment on {ncores}")
+                experiment(explainer, X_explain, distributed_opts, nruns)
+                ray.shutdown()
+                distributed_opts['ncpus'] = ncores + 1
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-batch_size",
-        default=10,
-        type=int,
-        help="Minibatch size. How many explanations each worker has to execute."
+        "-batch",
+        nargs='+',
+        help="A list of values representing the maximum batch size of instances sent to the same worker.",
+        required=True,
     )
     parser.add_argument(
         "-cores",
