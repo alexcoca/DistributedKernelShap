@@ -95,11 +95,11 @@ def load_data():
         data['background'] = pickle.load(io.BytesIO(background_data_raw.content))
 
         # save the data locally so we don't download it every time we run the main script
-        if not os.path.exists('../data'):
-            os.mkdir('../data')
-        with open('../data/adult_background.pkl', 'wb') as f:
+        if not os.path.exists('data'):
+            os.mkdir('data')
+        with open('data/adult_background.pkl', 'wb') as f:
             pickle.dump(data['background'], f)
-        with open('../data/adult_processed.pkl', 'wb') as f:
+        with open('data/adult_processed.pkl', 'wb') as f:
             pickle.dump(data['all'], f)
 
     return data
