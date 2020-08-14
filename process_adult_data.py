@@ -2,6 +2,7 @@ import argparse
 import pickle
 import logging
 import os
+import sys
 import requests
 
 import numpy as np
@@ -21,6 +22,9 @@ ADULT_URLS = [
     'https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data',
     'http://mlr.cs.umass.edu/ml/machine-learning-databases/adult/adult.data',
 ]  # type: List[str]
+
+
+sys.path.append('../')
 
 
 def fetch_adult(features_drop: list = None, return_X_y: bool = False, url_id: int = 0) -> \
@@ -227,8 +231,8 @@ def preprocess_adult_dataset(dataset, seed=0, n_train_examples=30000) -> Dict[st
 
 def main():
 
-    if not os.path.exists('../data'):
-        os.mkdir('../data')
+    if not os.path.exists('data'):
+        os.mkdir('data')
 
     # load and preprocess data
     adult_dataset = load_adult_dataset()
@@ -239,9 +243,9 @@ def main():
     background_dataset['X']['raw'] = adult_preprocessed['X']['raw']['train'][0:n_examples, :]
     background_dataset['X']['preprocessed'] = adult_preprocessed['X']['processed']['train'][0:n_examples, :]
     background_dataset['y'] = adult_preprocessed['y']['train'][0:n_examples]
-    with open('../data/adult_background.pkl', 'wb') as f:
+    with open('data/adult_background.pkl', 'wb') as f:
         pickle.dump(background_dataset, f)
-    with open('../data/adult_processed.pkl', 'wb') as f:
+    with open('data/adult_processed.pkl', 'wb') as f:
         pickle.dump(adult_preprocessed, f)
 
 
