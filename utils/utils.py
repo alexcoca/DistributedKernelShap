@@ -8,8 +8,8 @@ from functools import singledispatch, update_wrapper
 from typing import Callable
 
 
-EXPLANATIONS_SET = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
-BACKGROUND_SET = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_background.pkl'
+EXPLANATIONS_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
+BACKGROUND_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_background.pkl'
 EXPLANATIONS_SET_LOCAL = 'data/adult_processed.pkl'
 BACKGROUND_SET_LOCAL = 'data/adult_background.pkl'
 
@@ -59,23 +59,24 @@ def methdispatch(func: Callable):
     return wrapper
 
 
-def download_data():
-    """ Download datasets from Seldon GC bucket."""
-    resp = []
+def download(path: str):
+    """ Download from Seldon GC bucket indicated by `path`."""
+
     try:
-        resp.append(requests.get(EXPLANATIONS_SET))
-        resp.append(requests.get(BACKGROUND_SET))
-        for r in resp:
-            r.raise_for_status()
+        resp = requests.get(path)
+        resp.raise_for_status()
     except requests.RequestException:
-        logging.exception("Could not connect to bucket, URL may be out of service")
+        logging.exception("Could not connect to bucket, URL may be out of service!")
         raise ConnectionError
 
     return resp
 
 
 def load_data():
-    """Load data to be explained."""
+    """
+    Load instances to be explained and background data from the data/ directory if they exist, otherwise download
+    from Seldon Google Cloud bucket.
+    """
 
     data = {'all': None, 'background': None}
     try:
@@ -84,11 +85,14 @@ def load_data():
         with open(EXPLANATIONS_SET_LOCAL, 'rb') as f:
             data['all'] = pickle.load(f)
     except FileNotFoundError:
-        logging.info(f"Downloading data from {EXPLANATIONS_SET}")
-        logging.info(f"Downloading data from {BACKGROUND_SET}")
-        raw_data = download_data()
-        data['all'] = pickle.load(io.BytesIO(raw_data[0].content))
-        data['background'] = pickle.load(io.BytesIO(raw_data[1].content))
+        logging.info(f"Downloading data from {EXPLANATIONS_SET_URL}")
+        all_data_raw = download(EXPLANATIONS_SET_URL)
+        data['all'] = pickle.load(io.BytesIO(all_data_raw.content))
+        logging.info(f"Downloading data from {BACKGROUND_SET_URL}")
+        background_data_raw = download(BACKGROUND_SET_URL)
+        data['background'] = pickle.load(io.BytesIO(background_data_raw.content))
+
+        # save the data locally so we don't download it every time we run the main script
         if not os.path.exists('../data'):
             os.mkdir('../data')
         with open('../data/adult_background.pkl', 'wb') as f:
