@@ -13,7 +13,7 @@ from requests import RequestException
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
 from typing import Any, Dict, List, Tuple, Union
-from utils.utils import Bunch
+from explainers.utils import Bunch
 
 logger = logging.getLogger(__name__)
 
