@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score
 from explainers.kernel_shap import KernelShap
 from typing import Any, Dict
 from timeit import default_timer as timer
-from utils.utils import get_filename, load_data, load_model
+from explainers.utils import get_filename, load_data, load_model
 
 logging.basicConfig(level=logging.INFO)
 
@@ -39,16 +39,36 @@ def fit_kernel_shap_explainer(clf, data: dict, distributed_opts: Dict[str, Any] 
     return explainer
 
 
-def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: int):
+def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: int, batch_size: int):
     """
     Explain `X_explain` with `explainer` configured with `distributed_opts` `nruns` times in order to obtain
     runtime statistics.
+
+    Parameters
+    ---------
+    explainer
+        Fitted KernelShap explainer object
+    X_explain
+        Array containing instances to be explained, layed out row-wise. Split into minibatches that are distributed
+        by the explainer.
+    distributed_opts
+        A dictionary of the form::
+
+            {
+            'n_cpus': int - controls the number of workers on which the instances are explained
+            'batch_size': int - the size of a minibatch into which the dateset is split
+            'actor_cpu_fraction': the fraction of CPU allocated to an actor
+            }
+    batch_size:
+        The minibatch size for the current set of of `nruns`
     """
 
     if not os.path.exists('results'):
         os.mkdir('results')
 
     result = {'t_elapsed': [], 'explanations': []}
+    # update minibatch size
+    explainer._explainer.batch_size = batch_size
     for run in range(nruns):
         logging.info(f"run: {run}")
         t_start = timer()
@@ -64,31 +84,25 @@ def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: 
 
 def main():
 
-    nruns = args.nruns if args.benchmark == 1 else 1
+    # initialise ray
+    ray.init(address='auto')
+
+    # experiment settings
+    nruns = args.nruns
     batch_sizes = [int(elem) for elem in args.batch]
 
+    # load data and instances to be explained
     data = load_data()
     predictor = load_model('assets/predictor.pkl')  # download if not available locally
     y_test, X_test_proc = data['all']['y']['test'], data['all']['X']['processed']['test']
     logging.info(f"Test accuracy: {accuracy_score(y_test, predictor.predict(X_test_proc))}")
-
     X_explain = data['all']['X']['processed']['test'].toarray()  # instances to be explained
 
-    if args.cores == -1:  # sequential benchmark
-        distributed_opts = {'batch_size': None, 'n_cpus': None, 'actor_cpu_fraction': 1.0}
-        explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts=distributed_opts)
-        experiment(explainer, X_explain, distributed_opts, nruns)
-    # run distributed benchmark or simply explain on a number of cores, depeding on args.benchmark value
-    else:
-        cores_range = range(2, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
-        for ncores in cores_range:
-            for batch_size in batch_sizes:
-                distributed_opts = {'batch_size': int(batch_size), 'n_cpus': ncores, 'actor_cpu_fraction': 1.0}
-                explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
-                logging.info(f"Running experiment on {ncores}")
-                experiment(explainer, X_explain, distributed_opts, nruns)
-                ray.shutdown()
-                distributed_opts['ncpus'] = ncores + 1
+    distributed_opts = {'n_cpus': args.workers, 'actor_cpu_fraction': 1.0}
+    explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
+    for batch_size in batch_sizes:
+        logging.info(f"Running experiment on {args.workers}")
+        run_explainer(explainer, X_explain, distributed_opts, nruns, batch_size)
 
 
 if __name__ == '__main__':
@@ -100,17 +114,10 @@ if __name__ == '__main__':
         required=True,
     )
     parser.add_argument(
-        "-cores",
-        default=-1,
+        "-workers",
+        default=1,
         type=int,
-        help="The number of cores to distribute the explanations dataset on. Set to -1 to run sequenential version."
-    )
-    parser.add_argument(
-        "-benchmark",
-        default=0,
-        type=int,
-        help="Set to 1 to benchmark parallel computation. In this case, explanations are distributed over cores in "
-             "range(2, args.cores).!"
+        help="The number of workers to distribute the explanations dataset on. Set to -1 to run sequenential version."
     )
     parser.add_argument(
         "-nruns",
