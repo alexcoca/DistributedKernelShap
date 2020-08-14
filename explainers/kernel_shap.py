@@ -6,9 +6,9 @@ import numpy as np
 import pandas as pd
 from shap import KernelExplainer
 
-from api.interfaces import DEFAULT_META_KERNEL_SHAP, DEFAULT_DATA_KERNEL_SHAP, Explanation, Explainer, FitMixin
-from utils.utils import methdispatch
-from utils.distributed import DistributedExplainer
+from explainers.api.interfaces import DEFAULT_META_KERNEL_SHAP, DEFAULT_DATA_KERNEL_SHAP, Explanation, Explainer, FitMixin
+from explainers.utils import methdispatch
+from explainers.utils import DistributedExplainer
 from functools import partial
 from scipy import sparse
 from shap.common import DenseData, DenseDataWithIndex, convert_to_link
@@ -209,7 +209,7 @@ def sum_categories(values: np.ndarray, start_idx: Sequence[int], enc_feat_dim: S
 DISTRIBUTED_OPTS = {
     'n_cpus': None,
     'batch_size': None,
-    'actor_cpu_fraction': 1.0,
+    'actor_cpu_fraction': 1.0
 }
 
 
