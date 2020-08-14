@@ -10,8 +10,10 @@ from typing import Callable
 
 EXPLANATIONS_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
 BACKGROUND_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_background.pkl'
+MODEL_URL = 'https://storage.googleapis.com/seldon-models/alibi/distributed_kernel_shap/predictor.pkl'
 EXPLANATIONS_SET_LOCAL = 'data/adult_processed.pkl'
 BACKGROUND_SET_LOCAL = 'data/adult_background.pkl'
+MODEL_LOCAL = 'assets/predictor.pkl'
 
 
 class Bunch(dict):
@@ -101,6 +103,29 @@ def load_data():
             pickle.dump(data['all'], f)
 
     return data
+
+
+def load_model(path: str):
+    """
+    Load a model that has been saved locally or download a default model from a Seldon bucket.
+    """
+
+    try:
+        with open(path, "rb") as f:
+            model = pickle.load(f)
+        return model
+    except FileNotFoundError:
+        logging.info(f"Could not find model {path}. Downloading from {MODEL_URL}...")
+        model_raw = download(MODEL_URL)
+        model = pickle.load(io.BytesIO(model_raw.content))
+
+        if not os.path.exists('assets'):
+            os.mkdir('assets')
+
+        with open("assets/predictor.pkl", "wb") as f:
+            pickle.dump(model, f)
+
+        return model
 
 
 def get_filename(distributed_opts: dict):
