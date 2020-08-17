@@ -1,4 +1,4 @@
-DOCKER REPOSITORY ?= alexcoca/distributedkernelshap
+DOCKER_REPOSITORY ?= alexcoca/distributedkernelshap
 
 POOL_IMAGE_NAME ?= pooldistributedkernelshap
 POOL_IMAGE_VERSION ?= 0.1
