@@ -1,0 +1,7 @@
+FROM rayproject/autoscaler:ray-0.8.6
+
+WORKDIR ./
+
+COPY ../poetry.lock ../pyproject.toml ./
+
+RUN pip install .
