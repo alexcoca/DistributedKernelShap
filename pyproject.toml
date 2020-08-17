@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "distributedkernelshap"
+name = "explainers"
 version = "0.1.0"
 description = "A package that uses ray to distribute KernelSHAP"
 authors = ["alexcoca <alexcoca23@yahoo.co.uk>"]
