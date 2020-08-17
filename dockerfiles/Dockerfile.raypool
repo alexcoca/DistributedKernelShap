@@ -2,6 +2,6 @@ FROM rayproject/autoscaler:ray-0.8.6
 
 WORKDIR ./
 
-COPY ../pyproject.toml ./
+COPY pyproject.toml ./pyproject.toml
 
 RUN pip install .
