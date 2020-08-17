@@ -83,9 +83,10 @@ def main():
         cores_range = range(2, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
         for ncores in cores_range:
             for batch_size in batch_sizes:
+                logging.info(f"Running experiment on {ncores}...")
+                logging.info(f"Running experiment with batch size {batch_size}")
                 distributed_opts = {'batch_size': int(batch_size), 'n_cpus': ncores, 'actor_cpu_fraction': 1.0}
                 explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
-                logging.info(f"Running experiment on {ncores}")
                 experiment(explainer, X_explain, distributed_opts, nruns)
                 ray.shutdown()
                 distributed_opts['ncpus'] = ncores + 1
