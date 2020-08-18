@@ -26,4 +26,4 @@ upload-script:
 
 
 run-experiment:
-    kubectl exec -it -n ${NAMESPACE} $${POD} -- python serve.py -batch 1 2 5 10 20 30 40 -workers 64
+    kubectl exec -it -n ${NAMESPACE} $${POD} -- python experiment.py -batch 1 2 5 10 20 30 40 -workers 64
