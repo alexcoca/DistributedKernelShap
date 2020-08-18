@@ -116,7 +116,7 @@ metadata:
   name: ray-worker
 spec:
   # Change this to scale the number of worker nodes started in the Ray cluster.
-  replicas: 5
+  replicas: 8
   selector:
     matchLabels:
       component: ray-worker
@@ -160,5 +160,5 @@ spec:
                 resource: requests.cpu
         resources:
           requests:
-            cpu: 100m
+            cpu: 4
             memory: 512Mi
