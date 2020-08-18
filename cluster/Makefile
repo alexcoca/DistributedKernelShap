@@ -1,6 +1,6 @@
 NAMESPACE ?= pool-ray-cluster
 WORKERS ?= 2
-BATCH ?= 1 2 5 10 15 20
+BATCH ?= 10 20
 
 SHELL := /bin/bash
 
@@ -28,4 +28,8 @@ upload-script:
 
 run-experiment:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
-	kubectl exec -it -n ${NAMESPACE} $${POD} -- python experiment.py -batch ${BATCH} -workers ${WORKERS}
+	kubectl exec -it -n ${NAMESPACE} $${POD} -- python -W ignore experiment.py -batch ${BATCH} -workers ${WORKERS}
+
+save-results:
+	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
+	kubectl cp ${NAMESPACE}/$${POD}:/distributed_explainers/results ../results/
