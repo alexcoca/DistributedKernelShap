@@ -1,6 +1,6 @@
 NAMESPACE ?= pool-ray-cluster
 WORKERS ?= 2
-BATCH ?= 10 20
+BATCH ?= 1 2 5 10 15 20
 
 SHELL := /bin/bash
 
