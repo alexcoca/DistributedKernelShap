@@ -30,6 +30,6 @@ run-experiment:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
 	kubectl exec -it -n ${NAMESPACE} $${POD} -- python -W ignore experiment.py -batch ${BATCH} -workers ${WORKERS}
 
-save-results:
+pull-results:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
 	kubectl cp ${NAMESPACE}/$${POD}:/distributed_explainers/results ../results/
