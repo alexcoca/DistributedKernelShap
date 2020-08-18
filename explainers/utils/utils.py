@@ -128,12 +128,18 @@ def load_model(path: str):
         return model
 
 
-def get_filename(distributed_opts: dict):
-    """Creates a filename for an experiment given `distributed_opts`."""
+def get_filename(workers: int, batch_size: int, cpu_fraction: float = 1.0):
+    """
+    Creates a filename for an experiment given the inputs.
 
-    ncpus = distributed_opts['n_cpus']
-    if ncpus:
-        batch_size = distributed_opts['batch_size']
-        cpu_fraction = distributed_opts['actor_cpu_fraction']
-        return f"results/ray_ncpu_{ncpus}_bsize_{batch_size}_actorfr_{cpu_fraction}.pkl"
-    return "results/sequential.pkl"
+    Parameters
+    ----------
+    workers
+        How many worker processes are used for the explanation task.
+    batch_size
+        Mini-batch size: how many explanations are sent to one worker process at a time.
+    cpu_fraction
+        CPU fraction utilized by a worker process.
+    """
+
+    return f"results/ray_workers_{workers}_bsize_{batch_size}_actorfr_{cpu_fraction}.pkl"

@@ -67,6 +67,7 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
         os.mkdir('results')
 
     result = {'t_elapsed': [], 'explanations': []}
+    workers = distributed_opts['n_cpus']
     # update minibatch size
     explainer._explainer.batch_size = batch_size
     for run in range(nruns):
@@ -78,7 +79,7 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
         result['t_elapsed'].append(t_elapsed)
         result['explanations'].append(explanation)
 
-    with open(get_filename(distributed_opts), 'wb') as f:
+    with open(get_filename(workers, batch_size), 'wb') as f:
         pickle.dump(result, f)
 
 
@@ -98,10 +99,11 @@ def main():
     logging.info(f"Test accuracy: {accuracy_score(y_test, predictor.predict(X_test_proc))}")
     X_explain = data['all']['X']['processed']['test'].toarray()  # instances to be explained
 
-    distributed_opts = {'n_cpus': args.workers, 'actor_cpu_fraction': 1.0}
+    distributed_opts = {'n_cpus': args.workers}
     explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
     for batch_size in batch_sizes:
-        logging.info(f"Running experiment on {args.workers}")
+        logging.info(f"Running experiment using {args.workers} actors...")
+        logging.info(f"Batch size: {batch_size}")
         run_explainer(explainer, X_explain, distributed_opts, nruns, batch_size)
 
 
