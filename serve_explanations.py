@@ -179,7 +179,7 @@ def distribute_explanations(n_runs: int, replicas: int, max_batch_size: int, add
         result['t_elapsed'].append(results.t_elapsed)
         result['explanations'].append(results.responses)
 
-    with open(get_filename({'replicas': replicas, 'max_batch_size': max_batch_size}), 'wb') as f:
+    with open(get_filename(replicas, max_batch_size), 'wb') as f:
         pickle.dump(result, f)
 
     ray.shutdown()

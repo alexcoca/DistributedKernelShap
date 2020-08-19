@@ -128,9 +128,24 @@ def load_model(path: str):
         return model
 
 
-def get_filename(distributed_opts: dict):
-    """Creates a filename for an experiment given `distributed_opts`."""
+def get_filename(workers: int, batch_size: int, cpu_fraction: int, serve: bool = True):
+    """
+    Creates a filename for an experiment given the inputs.
 
-    replicas = distributed_opts['replicas']
-    max_batch = distributed_opts['max_batch_size']
-    return f"results/ray_replicas_{replicas}_maxbatch_{max_batch}.pkl"
+    Parameters
+    ----------
+    workers
+        How many worker processes are used for the explanation task.
+    batch_size
+        Mini-batch size: how many explanations are sent to one worker process at a time.
+    cpu_fraction
+        CPU fraction utilized by a worker process.
+    serve
+        A different naming convention is used depending on whether ray serve is used to distribute the explanations or
+        not.
+    """
+
+    if serve:
+        return f"results/ray_replicas_{workers}_maxbatch_{batch_size}_actorfr_{cpu_fraction}.pkl"
+    return f"results/ray_workers_{workers}_bsize_{batch_size}_actorfr_{cpu_fraction}.pkl"
+
