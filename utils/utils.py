@@ -128,7 +128,7 @@ def load_model(path: str):
         return model
 
 
-def get_filename(workers: int, batch_size: int, cpu_fraction: int, serve: bool = True):
+def get_filename(workers: int, batch_size: int, cpu_fraction: float = 1.0, serve: bool = True):
     """
     Creates a filename for an experiment given the inputs.
 
