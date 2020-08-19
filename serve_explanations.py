@@ -207,13 +207,15 @@ def main():
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-r, --replicas",
+        "-r",
+        "--replicas",
         default=1,
         type=int,
         help="The number of backend replicas used to serve the explainer."
     )
     parser.add_argument(
-        "-batch, --max_batch_size",
+        "-batch",
+        "--max_batch_size",
         nargs='+',
         help="A list of values representing the maximum batch size of pending queries sent to the same worker.",
         required=True,
@@ -226,23 +228,26 @@ if __name__ == '__main__':
              "range(1, args.replicas).!"
     )
     parser.add_argument(
-        "-n, --nruns",
+        "-n",
+        "--nruns",
         default=5,
         type=int,
         help="Controls how many times an experiment is run (in benchmark mode) for a given number of cores to obtain "
              "run statistics."
     )
     parser.add_argument(
-        "-h, --host",
+        "-ho",
+        "--host",
         default="http://localhost",
         type=str,
-        help="Hostname"
+        help="Hostname."
     )
     parser.add_argument(
-        "-p, --port",
+        "-p",
+        "--port",
         default="8000",
         type=str,
-        help="Port"
+        help="Port."
     )
     args = parser.parse_args()
     main()
