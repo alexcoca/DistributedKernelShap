@@ -11,9 +11,9 @@ from typing import Callable
 EXPLANATIONS_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
 BACKGROUND_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_background.pkl'
 MODEL_URL = 'https://storage.googleapis.com/seldon-models/alibi/distributed_kernel_shap/predictor.pkl'
-EXPLANATIONS_SET_LOCAL = '../data/adult_processed.pkl'
-BACKGROUND_SET_LOCAL = '../data/adult_background.pkl'
-MODEL_LOCAL = '../assets/predictor.pkl'
+EXPLANATIONS_SET_LOCAL = 'data/adult_processed.pkl'
+BACKGROUND_SET_LOCAL = 'data/adult_background.pkl'
+MODEL_LOCAL = 'assets/predictor.pkl'
 
 
 class Bunch(dict):
@@ -95,11 +95,11 @@ def load_data():
         data['background'] = pickle.load(io.BytesIO(background_data_raw.content))
 
         # save the data locally so we don't download it every time we run the main script
-        if not os.path.exists('../data'):
-            os.mkdir('../data')
-        with open('../data/adult_background.pkl', 'wb') as f:
+        if not os.path.exists('data'):
+            os.mkdir('data')
+        with open('data/adult_background.pkl', 'wb') as f:
             pickle.dump(data['background'], f)
-        with open('../data/adult_processed.pkl', 'wb') as f:
+        with open('data/adult_processed.pkl', 'wb') as f:
             pickle.dump(data['all'], f)
 
     return data
@@ -119,10 +119,10 @@ def load_model(path: str):
         model_raw = download(MODEL_URL)
         model = pickle.load(io.BytesIO(model_raw.content))
 
-        if not os.path.exists('../assets'):
-            os.mkdir('../assets')
+        if not os.path.exists('assets'):
+            os.mkdir('assets')
 
-        with open("../assets/predictor.pkl", "wb") as f:
+        with open("assets/predictor.pkl", "wb") as f:
             pickle.dump(model, f)
 
         return model
@@ -148,4 +148,3 @@ def get_filename(workers: int, batch_size: int, cpu_fraction: float = 1.0, serve
     if serve:
         return f"results/ray_replicas_{workers}_maxbatch_{batch_size}_actorfr_{cpu_fraction}.pkl"
     return f"results/ray_workers_{workers}_bsize_{batch_size}_actorfr_{cpu_fraction}.pkl"
-
