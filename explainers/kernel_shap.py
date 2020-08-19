@@ -781,7 +781,9 @@ class KernelShap(Explainer, FitMixin):
         # convert data to dense format if sparse
         if self.use_groups and isinstance(X, sparse.spmatrix):
             X = X.toarray()
-        shap_values = self._explainer.shap_values(X, **kwargs)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            shap_values = self._explainer.shap_values(X, **kwargs)
         self.expected_value = self._explainer.expected_value
         expected_value = self.expected_value
         # for scalar model outputs a single numpy array is returned
