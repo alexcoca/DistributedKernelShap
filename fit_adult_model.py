@@ -39,12 +39,12 @@ def fit_adult_logistic_regression(data_dict: Dict[str, Any]):
 
 def main():
 
-    if not os.path.exists('../assets'):
-        os.mkdir('../assets')
+    if not os.path.exists('assets'):
+        os.mkdir('assets')
 
     data = load_data()
     lr_predictor = fit_adult_logistic_regression(data['all'])
-    with open("../assets/predictor.pkl", "wb") as f:
+    with open("assets/predictor.pkl", "wb") as f:
         pickle.dump(lr_predictor, f)
 
 
