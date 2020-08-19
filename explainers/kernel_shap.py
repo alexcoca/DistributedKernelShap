@@ -206,55 +206,6 @@ def sum_categories(values: np.ndarray, start_idx: Sequence[int], enc_feat_dim: S
     return np.add.reduceat(values, slices, axis=1)
 
 
-class KernelExplainerWrapper(KernelExplainer):
-    """
-    A wrapper around `shap.KernelExplainer` that supports:
-
-        - fixing the seed when instantiating the KernelExplainer in a separate process
-        - passing a batch index to the explainer so that a parallel explainer pool can return batches in arbitrary order
-    """
-
-    def __init__(self, *args, **kwargs):
-        if 'seed' in kwargs:
-            seed = kwargs.pop('seed')
-            np.random.seed(seed)
-        super().__init__(*args, **kwargs)
-
-    def get_explanation(self, X: Union[Tuple[int, np.ndarray], np.ndarray], **kwargs) -> Tuple[int, np.ndarray]:
-        """
-        Wrapper around `shap.KernelExplainer.shap_values` that allows calling the method with a tuple containing a
-        batch index and a batch of instances.
-
-        Parameters
-        ----------
-        X
-            When called from a distributed context, it is a tuple containing a batch index and a batch to be explained.
-            Otherwise, it is an array of instances to be explained.
-        kwargs
-            `shap.KernelExplainer` kwarg values.
-        """
-
-        # handle call from distributed context
-        if isinstance(X, tuple):
-            batch_idx, batch = X
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                shap_values = super().shap_values(batch, **kwargs)
-            return batch_idx, shap_values
-        else:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                shap_values = super().shap_values(X, **kwargs)
-            return shap_values
-
-    def return_attribute(self, name: str) -> Any:
-        """
-        Returns an attribute specified by its name. Used in a distributed context where the actor properties cannot be
-        accessed using the dot syntax.
-        """
-        return self.__getattribute__(name)
-
-
 class KernelShap(Explainer, FitMixin):
 
     def __init__(self,
