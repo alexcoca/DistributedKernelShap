@@ -6,7 +6,7 @@ import pickle
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 from typing import Dict, Any
-from utils.utils import load_data
+from explainers.utils import load_data
 
 """
 This script pulls the Adult data from the ``data/`` directory and fits a logistic regression model to it. Model is 

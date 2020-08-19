@@ -5,14 +5,13 @@ import warnings
 
 import numpy as np
 import pandas as pd
-from shap import KernelExplainer
 
-from api.interfaces import DEFAULT_META_KERNEL_SHAP, DEFAULT_DATA_KERNEL_SHAP, Explanation, Explainer, FitMixin
-from utils.utils import methdispatch
+from explainers.interface import DEFAULT_META_KERNEL_SHAP, DEFAULT_DATA_KERNEL_SHAP, Explanation, Explainer, FitMixin
+from explainers.utils import methdispatch
 from functools import partial
 from scipy import sparse
 from shap.common import DenseData, DenseDataWithIndex, convert_to_link
-from typing import Any, Callable, Dict, List, Optional, Sequence, Union, Tuple, TYPE_CHECKING
+from typing import Callable, Dict, List, Optional, Sequence, Union, Tuple, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import catboost  # noqa F401

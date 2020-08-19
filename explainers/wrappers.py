@@ -5,7 +5,7 @@ import numpy as np
 from explainers.kernel_shap import KernelShap
 from ray import serve
 from typing import Any, Dict, List
-from utils.utils import load_model
+from explainers.utils import load_model
 
 
 class KernelShapModel:

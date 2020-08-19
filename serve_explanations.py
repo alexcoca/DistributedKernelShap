@@ -11,8 +11,8 @@ from collections import namedtuple
 from ray import serve
 from timeit import default_timer as timer
 from typing import Any, Dict, Tuple
-from utils.wrappers import BatchKernelShapModel, KernelShapModel
-from utils.utils import get_filename, load_data
+from explainers.wrappers import BatchKernelShapModel, KernelShapModel
+from explainers.utils import get_filename, load_data
 
 logging.basicConfig(level=logging.INFO)
 

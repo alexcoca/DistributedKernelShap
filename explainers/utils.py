@@ -11,9 +11,9 @@ from typing import Callable
 EXPLANATIONS_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
 BACKGROUND_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_background.pkl'
 MODEL_URL = 'https://storage.googleapis.com/seldon-models/alibi/distributed_kernel_shap/predictor.pkl'
-EXPLANATIONS_SET_LOCAL = 'data/adult_processed.pkl'
-BACKGROUND_SET_LOCAL = 'data/adult_background.pkl'
-MODEL_LOCAL = 'assets/predictor.pkl'
+EXPLANATIONS_SET_LOCAL = '../data/adult_processed.pkl'
+BACKGROUND_SET_LOCAL = '../data/adult_background.pkl'
+MODEL_LOCAL = '../assets/predictor.pkl'
 
 
 class Bunch(dict):
@@ -119,10 +119,10 @@ def load_model(path: str):
         model_raw = download(MODEL_URL)
         model = pickle.load(io.BytesIO(model_raw.content))
 
-        if not os.path.exists('assets'):
-            os.mkdir('assets')
+        if not os.path.exists('../assets'):
+            os.mkdir('../assets')
 
-        with open("assets/predictor.pkl", "wb") as f:
+        with open("../assets/predictor.pkl", "wb") as f:
             pickle.dump(model, f)
 
         return model
