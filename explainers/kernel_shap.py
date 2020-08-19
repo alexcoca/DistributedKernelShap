@@ -1,6 +1,7 @@
 import copy
 import logging
 import shap
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -236,10 +237,14 @@ class KernelExplainerWrapper(KernelExplainer):
         # handle call from distributed context
         if isinstance(X, tuple):
             batch_idx, batch = X
-            shap_values = super().shap_values(batch, **kwargs)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                shap_values = super().shap_values(batch, **kwargs)
             return batch_idx, shap_values
         else:
-            shap_values = super().shap_values(X, **kwargs)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                shap_values = super().shap_values(X, **kwargs)
             return shap_values
 
     def return_attribute(self, name: str) -> Any:
