@@ -23,7 +23,7 @@ reset:
 
 upload-script:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
-	kubectl cp -n ${NAMESPACE} ./benchmarks/k8s_serve_explanations.py $${POD}:k8s_serve_explanations.py
+	kubectl cp -n ${NAMESPACE} ../benchmarks/k8s_serve_explanations.py $${POD}:k8s_serve_explanations.py
 
 run-experiment:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
