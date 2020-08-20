@@ -5,13 +5,12 @@ import numpy as np
 from explainers.kernel_shap import KernelShap
 from ray import serve
 from typing import Any, Dict, List
-from explainers.utils import load_model
 
 
 class KernelShapModel:
     """Backend class for distributing explanations with Ray Serve."""
     def __init__(self,
-                 predictor_path: str,
+                 predictor,
                  background_data: np.ndarray,
                  constructor_kwargs: Dict[str, Any],
                  fit_kwargs: Dict[str, Any]):
@@ -21,8 +20,8 @@ class KernelShapModel:
 
         Parameters
         ----------
-        predictor_path
-            Path to the model to be explained.
+        predictor
+            Model to be explained.
         background_data
             Background data used for fitting the explainer.
         constructor_kwargs
@@ -31,7 +30,6 @@ class KernelShapModel:
             Any other arguments for the explainer `fit` method. See `explainers.kernel_shap.KernelShap` for details.
         """
 
-        predictor = load_model(predictor_path)
         predict_fcn = predictor.predict_proba
         if not hasattr(predictor, "predict_proba"):
             logging.warning("Predictor does not have predict_proba attribute, defaulting to predict")
