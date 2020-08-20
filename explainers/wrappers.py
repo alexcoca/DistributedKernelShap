@@ -30,10 +30,10 @@ class KernelShapModel:
             Any other arguments for the explainer `fit` method. See `explainers.kernel_shap.KernelShap` for details.
         """
 
-        predict_fcn = predictor.predict_proba
         if not hasattr(predictor, "predict_proba"):
             logging.warning("Predictor does not have predict_proba attribute, defaulting to predict")
             predict_fcn = predictor.predict
+        predict_fcn = predictor.predict_proba
         self.explainer = KernelShap(predict_fcn, **constructor_kwargs)
 
         # TODO: REFACTOR THIS TO USE THE BACKEND METHOD CALLING FUNCTIONALITY
