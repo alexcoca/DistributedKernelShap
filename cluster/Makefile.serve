@@ -1,7 +1,7 @@
 NAMESPACE ?= kernel-shap-ray-cluster
 WORKERS ?= 2
 BATCH_MODE ?= ray
-BATCH ?= 1 2 5 10 15 20
+BATCH ?= 5
 
 SHELL := /bin/bash
 
@@ -21,15 +21,13 @@ reset:
 	kubectl rollout status deployment/ray-head -n {NAMESPACE}
 	kubectl rollout status deployment/ray-worker -n {NAMESPACE}
 
-
 upload-script:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
-	kubectl cp -n ${NAMESPACE} ../serve_explanations.py $${POD}:serve_explanations.py
-
+	kubectl cp -n ${NAMESPACE} ./benchmarks/k8s_serve_explanations.py $${POD}:k8s_serve_explanations.py
 
 run-experiment:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
-	kubectl exec -it -n ${NAMESPACE} $${POD} -- python -W ignore serve_explanations.py -batch ${BATCH} -r ${WORKERS} -batch_mode ${BATCH_MODE}
+	kubectl exec -it -n ${NAMESPACE} $${POD} -- python -W ignore k8s_serve_explanations.py -batch ${BATCH} -r ${WORKERS} -batch_mode ${BATCH_MODE}
 
 pull-results:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
