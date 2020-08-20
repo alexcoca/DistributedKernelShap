@@ -4,18 +4,20 @@ import os
 import ray
 import pickle
 import requests
-
 import numpy as np
+
+import explainers.wrappers as wrappers
 
 from collections import namedtuple
 from ray import serve
 from timeit import default_timer as timer
 from typing import Any, Dict, List, Tuple
-from explainers.wrappers import BatchKernelShapModel, KernelShapModel
-from explainers.utils import batch, get_filename, load_data
+from explainers.utils import get_filename, batch, load_data, load_model
+
 
 logging.basicConfig(level=logging.INFO)
 
+PREDICTOR_URL = 'https://storage.googleapis.com/seldon-models/alibi/distributed_kernel_shap/predictor.pkl'
 PREDICTOR_PATH = 'assets/predictor.pkl'
 """
 str: The file containing the predictor. The predictor can be created by running `fit_adult_model.py` or output by 
@@ -57,10 +59,10 @@ def backend_setup(tag: str, worker_args: Tuple, replicas: int, max_batch_size: i
 
     if max_batch_size == 1:
         config = {'num_replicas': max(replicas, 1)}
-        serve.create_backend(tag, KernelShapModel, *worker_args)
+        serve.create_backend(tag, wrappers.KernelShapModel, *worker_args)
     else:
         config = {'num_replicas': max(replicas, 1), 'max_batch_size': max_batch_size}
-        serve.create_backend(tag, BatchKernelShapModel, *worker_args)
+        serve.create_backend(tag, wrappers.BatchKernelShapModel, *worker_args)
     serve.update_backend_config(tag, config)
 
     logging.info(f"Backends: {serve.list_backends()}")
@@ -88,7 +90,8 @@ def prepare_explainer_args(data: Dict[str, Any]) -> Tuple[str, np.ndarray, dict,
     assert background_data.shape[0] == 100
     init_kwargs = {'link': 'logit', 'feature_names': group_names, 'seed': 0}
     fit_kwargs = {'groups': groups, 'group_names': group_names}
-    worker_args = (PREDICTOR_PATH, background_data, init_kwargs, fit_kwargs)
+    predictor = load_model(PREDICTOR_URL)
+    worker_args = (predictor, background_data, init_kwargs, fit_kwargs)
 
     return worker_args
 
@@ -202,9 +205,10 @@ def main():
 
     max_batch_size = [int(elem) for elem in args.max_batch_size][0]
     batch_mode, replicas = args.batch_mode, args.replicas
-
-    ray.init(address='auto')  # connect to the cluster
-    serve.init(http_host='0.0.0.0')  # listen on 0.0.0.0 to make endpoint accessible from other machines
+    # TODO: FIX
+    serve.init()
+    # ray.init(address='auto')  # connect to the cluster
+    # serve.init(http_host='0.0.0.0')  # listen on 0.0.0.0 to make endpoint accessible from other machines
     host, route = os.environ.get("RAY_HEAD_SERVICE_HOST", args.host), "explain"
     url = f"{host}:{args.port}/{route}"
     backend_tag = "kernel_shap:b100"  # b100 means 100 background samples
@@ -235,7 +239,7 @@ if __name__ == '__main__':
         "--max_batch_size",
         nargs='+',
         help="A list of values representing the maximum batch size of pending queries sent to the same worker."
-             "This should only contain one element as the backend is reset from `benchmark_serve.sh`.",
+             "This should only contain one element as the backend is reset from `k8s_benchmark_serve.sh`.",
         required=True,
     )
     parser.add_argument(
