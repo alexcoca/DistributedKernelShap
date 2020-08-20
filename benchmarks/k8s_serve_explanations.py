@@ -259,7 +259,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "-ho",
         "--host",
-        default="http://localhost",
+        default="localhost",
         type=str,
         help="Hostname."
     )
