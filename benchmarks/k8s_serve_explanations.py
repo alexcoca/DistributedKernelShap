@@ -205,12 +205,10 @@ def main():
 
     max_batch_size = [int(elem) for elem in args.max_batch_size][0]
     batch_mode, replicas = args.batch_mode, args.replicas
-    # TODO: FIX
-    serve.init()
-    # ray.init(address='auto')  # connect to the cluster
-    # serve.init(http_host='0.0.0.0')  # listen on 0.0.0.0 to make endpoint accessible from other machines
+    ray.init(address='auto')  # connect to the cluster
+    serve.init(http_host='0.0.0.0')  # listen on 0.0.0.0 to make endpoint accessible from other machines
     host, route = os.environ.get("RAY_HEAD_SERVICE_HOST", args.host), "explain"
-    url = f"{host}:{args.port}/{route}"
+    url = f"http://{host}:{args.port}/{route}"
     backend_tag = "kernel_shap:b100"  # b100 means 100 background samples
     endpoint_tag = f"{backend_tag}_endpoint"
     worker_args = prepare_explainer_args(data)
