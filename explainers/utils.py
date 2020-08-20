@@ -10,11 +10,12 @@ from functools import singledispatch, update_wrapper
 from scipy import sparse
 from typing import Callable, List
 
+
 EXPLANATIONS_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
 BACKGROUND_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_background.pkl'
-MODEL_URL = 'https://storage.googleapis.com/seldon-models/alibi/distributed_kernel_shap/predictor.pkl'
 EXPLANATIONS_SET_LOCAL = 'data/adult_processed.pkl'
 BACKGROUND_SET_LOCAL = 'data/adult_background.pkl'
+MODEL_URL = 'https://storage.googleapis.com/seldon-models/alibi/distributed_kernel_shap/predictor.pkl'
 MODEL_LOCAL = 'assets/predictor.pkl'
 
 
@@ -61,73 +62,6 @@ def methdispatch(func: Callable):
     update_wrapper(wrapper, dispatcher)
 
     return wrapper
-
-
-def download(path: str):
-    """ Download from Seldon GC bucket indicated by `path`."""
-
-    try:
-        resp = requests.get(path)
-        resp.raise_for_status()
-    except requests.RequestException:
-        logging.exception("Could not connect to bucket, URL may be out of service!")
-        raise ConnectionError
-
-    return resp
-
-
-def load_data():
-    """
-    Load instances to be explained and background data from the data/ directory if they exist, otherwise download
-    from Seldon Google Cloud bucket.
-    """
-
-    data = {'all': None, 'background': None}
-    try:
-        with open(BACKGROUND_SET_LOCAL, 'rb') as f:
-            data['background'] = pickle.load(f)
-        with open(EXPLANATIONS_SET_LOCAL, 'rb') as f:
-            data['all'] = pickle.load(f)
-    except FileNotFoundError:
-        logging.info(f"Downloading data from {EXPLANATIONS_SET_URL}")
-        all_data_raw = download(EXPLANATIONS_SET_URL)
-        data['all'] = pickle.load(io.BytesIO(all_data_raw.content))
-        logging.info(f"Downloading data from {BACKGROUND_SET_URL}")
-        background_data_raw = download(BACKGROUND_SET_URL)
-        data['background'] = pickle.load(io.BytesIO(background_data_raw.content))
-
-        # save the data locally so we don't download it every time we run the main script
-        if not os.path.exists('data'):
-            os.mkdir('data')
-        with open('data/adult_background.pkl', 'wb') as f:
-            pickle.dump(data['background'], f)
-        with open('data/adult_processed.pkl', 'wb') as f:
-            pickle.dump(data['all'], f)
-
-    return data
-
-
-def load_model(path: str):
-    """
-    Load a model that has been saved locally or download a default model from a Seldon bucket.
-    """
-
-    try:
-        with open(path, "rb") as f:
-            model = pickle.load(f)
-        return model
-    except FileNotFoundError:
-        logging.info(f"Could not find model {path}. Downloading from {MODEL_URL}...")
-        model_raw = download(MODEL_URL)
-        model = pickle.load(io.BytesIO(model_raw.content))
-
-        if not os.path.exists('assets'):
-            os.mkdir('assets')
-
-        with open("assets/predictor.pkl", "wb") as f:
-            pickle.dump(model, f)
-
-        return model
 
 
 def get_filename(workers: int, batch_size: int, cpu_fraction: float = 1.0, serve: bool = True):
@@ -185,3 +119,70 @@ def batch(X: np.ndarray, batch_size: int = None, n_batches: int = 4) -> List[np.
     else:
         batches = np.array_split(X, n_batches)
     return batches
+
+
+def _download(path: str):
+    """ Download from Seldon GC bucket indicated by `path`."""
+
+    try:
+        resp = requests.get(path)
+        resp.raise_for_status()
+    except requests.RequestException:
+        logging.exception("Could not connect to bucket, URL may be out of service!")
+        raise ConnectionError
+
+    return resp
+
+
+def load_model(path: str):
+    """
+    Load a model that has been saved locally or download a default model from a Seldon bucket.
+    """
+
+    try:
+        with open(path, "rb") as f:
+            model = pickle.load(f)
+        return model
+    except FileNotFoundError:
+        logging.info(f"Could not find model {path}. Downloading from {MODEL_URL}...")
+        model_raw = _download(path)
+        model = pickle.load(io.BytesIO(model_raw.content))
+
+        if not os.path.exists('assets'):
+            os.mkdir('assets')
+
+        with open("assets/predictor.pkl", "wb") as f:
+            pickle.dump(model, f)
+
+        return model
+
+
+def load_data():
+    """
+    Load instances to be explained and background data from the data/ directory if they exist, otherwise download
+    from Seldon Google Cloud bucket.
+    """
+
+    data = {'all': None, 'background': None}
+    try:
+        with open(BACKGROUND_SET_LOCAL, 'rb') as f:
+            data['background'] = pickle.load(f)
+        with open(EXPLANATIONS_SET_LOCAL, 'rb') as f:
+            data['all'] = pickle.load(f)
+    except FileNotFoundError:
+        logging.info(f"Downloading data from {EXPLANATIONS_SET_URL}")
+        all_data_raw = _download(EXPLANATIONS_SET_URL)
+        data['all'] = pickle.load(io.BytesIO(all_data_raw.content))
+        logging.info(f"Downloading data from {BACKGROUND_SET_URL}")
+        background_data_raw = _download(BACKGROUND_SET_URL)
+        data['background'] = pickle.load(io.BytesIO(background_data_raw.content))
+
+        # save the data locally so we don't download it every time we run the main script
+        if not os.path.exists('data'):
+            os.mkdir('data')
+        with open('data/adult_background.pkl', 'wb') as f:
+            pickle.dump(data['background'], f)
+        with open('data/adult_processed.pkl', 'wb') as f:
+            pickle.dump(data['all'], f)
+
+    return data
