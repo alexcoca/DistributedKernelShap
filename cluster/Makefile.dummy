@@ -1,0 +1,24 @@
+NAMESPACE ?= kernel-shap-ray-cluster
+WORKERS ?= 2
+BATCH_MODE ?= ray
+BATCH ?= 5
+
+SHELL := /bin/bash
+
+
+.ONESHELL:
+
+deploy:
+	echo "deployed"
+
+destroy:
+	echo "destroyed"
+
+upload-script:
+	echo "uploaded"
+
+run-experiment:
+	echo "Executing experiment on ${WORKERS} workers ${BATCH} batch size. Batch mode is: ${BATCH_MODE}"
+
+pull-results:
+	echo "Pulling results"
