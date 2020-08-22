@@ -1,16 +1,17 @@
 import copy
 import logging
 import shap
+import warnings
 
 import numpy as np
 import pandas as pd
-from shap import KernelExplainer
 
 from explainers.interface import DEFAULT_META_KERNEL_SHAP, DEFAULT_DATA_KERNEL_SHAP, Explanation, Explainer, FitMixin
 from explainers.utils import methdispatch
 from explainers.distributed import DistributedExplainer
 from functools import partial
 from scipy import sparse
+from shap import KernelExplainer
 from shap.common import DenseData, DenseDataWithIndex, convert_to_link
 from typing import Any, Callable, Dict, List, Optional, Sequence, Union, Tuple, TYPE_CHECKING
 
@@ -242,13 +243,15 @@ class KernelExplainerWrapper(KernelExplainer):
         """
 
         # handle call from distributed context
-        if isinstance(X, tuple):
-            batch_idx, batch = X
-            shap_values = super().shap_values(batch, **kwargs)
-            return batch_idx, shap_values
-        else:
-            shap_values = super().shap_values(X, **kwargs)
-            return shap_values
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            if isinstance(X, tuple):
+                batch_idx, batch = X
+                shap_values = super().shap_values(batch, **kwargs)
+                return batch_idx, shap_values
+            else:
+                shap_values = super().shap_values(X, **kwargs)
+                return shap_values
 
     def return_attribute(self, name: str) -> Any:
         """
@@ -873,6 +876,7 @@ class KernelShap(Explainer, FitMixin):
         # convert data to dense format if sparse
         if self.use_groups and isinstance(X, sparse.spmatrix):
             X = X.toarray()
+
         shap_values = self._explainer.get_explanation(X, **kwargs)
         self.expected_value = self._explainer.expected_value
         expected_value = self.expected_value
