@@ -5,12 +5,12 @@ import pickle
 import ray
 
 import numpy as np
-from sklearn.metrics import accuracy_score
 
 from explainers.kernel_shap import KernelShap
+from explainers.utils import get_filename, load_data, load_model
+from sklearn.metrics import accuracy_score
 from typing import Any, Dict
 from timeit import default_timer as timer
-from explainers.utils import get_filename, load_data, load_model
 
 logging.basicConfig(level=logging.INFO)
 
@@ -35,7 +35,6 @@ def fit_kernel_shap_explainer(clf, data: dict, distributed_opts: Dict[str, Any] 
     group_names, groups = data['all']['group_names'], data['all']['groups']
     explainer = KernelShap(pred_fcn, link='logit', feature_names=group_names, distributed_opts=distributed_opts, seed=0)
     explainer.fit(data['background']['X']['preprocessed'], group_names=group_names, groups=groups)
-
     return explainer
 
 
@@ -45,8 +44,8 @@ def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: 
     runtime statistics.
     """
 
-    if not os.path.exists('results'):
-        os.mkdir('results')
+    if not os.path.exists('./results'):
+        os.mkdir('./results')
     batch_size = distributed_opts['batch_size']
     workers = distributed_opts['n_cpus']
     result = {'t_elapsed': []}
