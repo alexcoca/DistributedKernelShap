@@ -175,10 +175,10 @@ class DistributedExplainer:
         """  # noqa E501
 
         if kwargs is not None:
-            self.target_fn = partial(self.target_fn, kwargs=kwargs)
+            target_fn = partial(self.target_fn, kwargs=kwargs)
         batched_instances = self.batch(X)
 
-        unordered_explanations = self.pool.map_unordered(self.target_fn, batched_instances)
+        unordered_explanations = self.pool.map_unordered(target_fn, batched_instances)
 
         return self.order_result(unordered_explanations)
 
