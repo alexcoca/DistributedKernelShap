@@ -47,7 +47,8 @@ def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: 
 
     if not os.path.exists('results'):
         os.mkdir('results')
-
+    batch_size = distributed_opts['batch_size']
+    workers = distributed_opts['n_cpus']
     result = {'t_elapsed': []}
     for run in range(nruns):
         logging.info(f"run: {run}")
@@ -57,7 +58,7 @@ def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: 
         logging.info(f"Time elapsed: {t_elapsed}")
         result['t_elapsed'].append(t_elapsed)
 
-        with open(get_filename(distributed_opts), 'wb') as f:
+        with open(get_filename(workers, batch_size, serve=False), 'wb') as f:
             pickle.dump(result, f)
 
 
