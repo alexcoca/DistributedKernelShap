@@ -38,7 +38,7 @@ def fit_kernel_shap_explainer(clf, data: dict, distributed_opts: Dict[str, Any] 
     return explainer
 
 
-def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: int):
+def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: int):
     """
     Explain `X_explain` with `explainer` configured with `distributed_opts` `nruns` times in order to obtain
     runtime statistics.
@@ -76,7 +76,7 @@ def main():
     if args.cores == -1:  # sequential benchmark
         distributed_opts = {'batch_size': None, 'n_cpus': None, 'actor_cpu_fraction': 1.0}
         explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts=distributed_opts)
-        experiment(explainer, X_explain, distributed_opts, nruns)
+        run_explainer(explainer, X_explain, distributed_opts, nruns)
     # run distributed benchmark or simply explain on a number of cores, depeding on args.benchmark value
     else:
         cores_range = range(1, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
@@ -86,7 +86,7 @@ def main():
                 logging.info(f"Running experiment with batch size {batch_size}")
                 distributed_opts = {'batch_size': int(batch_size), 'n_cpus': ncores, 'actor_cpu_fraction': 1.0}
                 explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
-                experiment(explainer, X_explain, distributed_opts, nruns)
+                run_explainer(explainer, X_explain, distributed_opts, nruns)
                 ray.shutdown()
                 distributed_opts['ncpus'] = ncores + 1
 
