@@ -73,50 +73,53 @@ def main():
 
     X_explain = data['all']['X']['processed']['test'].toarray()  # instances to be explained
 
-    if args.cores == -1:  # sequential benchmark
+    if args.workers == -1:  # sequential benchmark
         distributed_opts = {'batch_size': None, 'n_cpus': None, 'actor_cpu_fraction': 1.0}
         explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts=distributed_opts)
         run_explainer(explainer, X_explain, distributed_opts, nruns)
     # run distributed benchmark or simply explain on a number of cores, depeding on args.benchmark value
     else:
-        cores_range = range(1, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
-        for ncores in cores_range:
+        workers_range = range(1, args.workers + 1) if args.benchmark == 1 else range(args.workers, args.workers + 1)
+        for workers in workers_range:
             for batch_size in batch_sizes:
-                logging.info(f"Running experiment on {ncores}...")
+                logging.info(f"Running experiment on {workers}...")
                 logging.info(f"Running experiment with batch size {batch_size}")
-                distributed_opts = {'batch_size': int(batch_size), 'n_cpus': ncores, 'actor_cpu_fraction': 1.0}
+                distributed_opts = {'batch_size': int(batch_size), 'n_cpus': workers, 'actor_cpu_fraction': 1.0}
                 explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
                 run_explainer(explainer, X_explain, distributed_opts, nruns)
                 ray.shutdown()
-                distributed_opts['ncpus'] = ncores + 1
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-batch",
+        "-b",
+        "--batch",
         nargs='+',
         help="A list of values representing the maximum batch size of instances sent to the same worker.",
         required=True,
     )
     parser.add_argument(
-        "-cores",
+        "-w",
+        "--workers",
         default=-1,
         type=int,
-        help="The number of cores to distribute the explanations dataset on. Set to -1 to run sequenential version."
+        help="The number of processes to distribute the explanations dataset on. Set to -1 to run sequenential (without"
+             "ray) version."
     )
     parser.add_argument(
         "-benchmark",
         default=0,
         type=int,
         help="Set to 1 to benchmark parallel computation. In this case, explanations are distributed over cores in "
-             "range(1, args.cores).!"
+             "range(1, args.workers).!"
     )
     parser.add_argument(
-        "-nruns",
+        "-n",
+        "--nruns",
         default=5,
         type=int,
-        help="Controls how many times an experiment is run (in benchmark mode) for a given number of cores to obtain "
+        help="Controls how many times an experiment is run (in benchmark mode) for a given number of workers to obtain "
              "run statistics."
     )
     args = parser.parse_args()
