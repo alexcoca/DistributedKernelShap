@@ -5,6 +5,7 @@ import numpy as np
 from functools import partial
 from scipy import sparse
 from typing import Any, Callable, Dict, List, Optional, Union
+from explainers.utils import batch
 
 
 def kernel_shap_target_fn(actor: Any, instances: tuple, kwargs: Optional[Dict] = None) -> Callable:
@@ -126,38 +127,6 @@ class DistributedExplainer:
         actors = [handle.remote(*self.explainer_args, **self.explainer_kwargs) for handle in actor_handles]
         return ray.util.ActorPool(actors)
 
-    def batch(self, X: np.ndarray) -> enumerate:
-        """
-        Splits the input into sub-arrays according to the following logic:
-
-            - if `batch_size` is not `None`, batches of this size are created. The sizes of the batches created might \
-            vary if the 0-th dimension of `X` is not divisible by `batch_size`. For an array of length l that should be
-            split into n sections, it returns l % n sub-arrays of size l//n + 1 and the rest of size l//n.
-            - if `batch_size` is `None`, then `X` is split into `n_jobs` sub-arrays
-
-        Parameters
-        ----------
-        X
-            Array to be split.
-        Returns
-        ------
-            A list of sub-arrays of X.
-        """
-
-        n_records = X.shape[0]
-        if isinstance(X, sparse.spmatrix):
-            X = X.toarray()
-
-        if self.batch_size:
-            n_batches = n_records // self.batch_size
-            if n_records % self.batch_size != 0:
-                n_batches += 1
-            slices = [self.batch_size * i for i in range(1, n_batches)]
-            batches = np.array_split(X, slices)
-        else:
-            batches = np.array_split(X, self.n_jobs)
-        return enumerate(batches)
-
     def get_explanation(self, X: np.ndarray, **kwargs) -> np.ndarray:
         """
         Performs distributed explanations of instances in `X`.
@@ -176,9 +145,11 @@ class DistributedExplainer:
 
         if kwargs is not None:
             target_fn = partial(self.target_fn, kwargs=kwargs)
-        batched_instances = self.batch(X)
+        else:
+            target_fn = self.target_fn
+        batched_instances = batch(X, batch_size=self.batch_size, n_batches=self.n_jobs)
 
-        unordered_explanations = self.pool.map_unordered(target_fn, batched_instances)
+        unordered_explanations = self.pool.map_unordered(target_fn, enumerate(batched_instances))
 
         return self.order_result(unordered_explanations)
 

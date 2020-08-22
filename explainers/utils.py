@@ -4,8 +4,11 @@ import os
 import pickle
 import requests
 
+import numpy as np
+
 from functools import singledispatch, update_wrapper
-from typing import Callable
+from scipy import sparse
+from typing import Callable, List
 
 
 EXPLANATIONS_SET_URL = 'https://storage.googleapis.com/seldon-datasets/experiments/distributed_kernel_shap/adult_processed.pkl'
@@ -119,10 +122,10 @@ def load_model(path: str):
         model_raw = download(MODEL_URL)
         model = pickle.load(io.BytesIO(model_raw.content))
 
-        if not os.path.exists('assets'):
-            os.mkdir('assets')
+        if not os.path.exists('../assets'):
+            os.mkdir('../assets')
 
-        with open("assets/predictor.pkl", "wb") as f:
+        with open("../assets/predictor.pkl", "wb") as f:
             pickle.dump(model, f)
 
         return model
@@ -148,3 +151,38 @@ def get_filename(workers: dict, batch_size: int, cpu_fraction: float = 1.0, serv
     if serve:
         return f"results/ray_replicas_{workers}_maxbatch_{batch_size}_actorfr_{cpu_fraction}.pkl"
     return f"results/ray_workers_{workers}_bsize_{batch_size}_actorfr_{cpu_fraction}.pkl"
+
+
+def batch(X: np.ndarray, batch_size: int = None, n_batches: int = 4) -> List[np.ndarray]:
+    """
+    Splits the input into mini-batches.
+
+    Parameters
+    ----------
+    X
+        Array to be split.
+    batch_size
+        If not `None`, batches of this size are created. The sizes of the batches created might vary if the 0-th
+        dimension of `X` is not divisible by `batch_size`. For an array of len l that should be split into n sections,
+        it returns l % n sub-arrays of size l//n + 1 and the rest of size l//n.
+    n_batches
+        If `batch_size` is `None`, then `X` is split into `n_batches` mini-batches.
+
+    Returns
+    ------
+        A list of sub-arrays of X.
+    """
+
+    n_records = X.shape[0]
+    if isinstance(X, sparse.spmatrix):
+        X = X.toarray()
+
+    if batch_size:
+        n_batches = n_records // batch_size
+        if n_records % batch_size != 0:
+            n_batches += 1
+        slices = [batch_size * i for i in range(1, n_batches)]
+        batches = np.array_split(X, slices)
+    else:
+        batches = np.array_split(X, n_batches)
+    return batches
