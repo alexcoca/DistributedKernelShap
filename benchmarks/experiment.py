@@ -48,7 +48,7 @@ def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: 
     if not os.path.exists('results'):
         os.mkdir('results')
 
-    result = {'t_elapsed': [], 'explanations': []}
+    result = {'t_elapsed': []}
     for run in range(nruns):
         logging.info(f"run: {run}")
         t_start = timer()
@@ -56,10 +56,9 @@ def experiment(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: 
         t_elapsed = timer() - t_start
         logging.info(f"Time elapsed: {t_elapsed}")
         result['t_elapsed'].append(t_elapsed)
-        result['explanations'].append(explanation)
 
-    with open(get_filename(distributed_opts), 'wb') as f:
-        pickle.dump(result, f)
+        with open(get_filename(distributed_opts), 'wb') as f:
+            pickle.dump(result, f)
 
 
 def main():
