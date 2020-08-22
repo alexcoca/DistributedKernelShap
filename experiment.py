@@ -10,7 +10,7 @@ from sklearn.metrics import accuracy_score
 from explainers.kernel_shap import KernelShap
 from typing import Any, Dict
 from timeit import default_timer as timer
-from utils.utils import get_filename, load_data, load_model
+from explainers.utils import get_filename, load_data, load_model
 
 logging.basicConfig(level=logging.INFO)
 
