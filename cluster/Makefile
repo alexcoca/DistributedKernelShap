@@ -20,11 +20,9 @@ reset:
 	kubectl rollout status deployment/ray-head -n pool-ray-cluster
 	kubectl rollout status deployment/ray-worker -n pool-ray-cluster
 
-
 upload-script:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
 	kubectl cp -n ${NAMESPACE} ../experiment.py $${POD}:experiment.py
-
 
 run-experiment:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
