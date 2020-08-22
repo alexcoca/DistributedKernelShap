@@ -80,7 +80,7 @@ def main():
         experiment(explainer, X_explain, distributed_opts, nruns)
     # run distributed benchmark or simply explain on a number of cores, depeding on args.benchmark value
     else:
-        cores_range = range(2, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
+        cores_range = range(1, args.cores + 1) if args.benchmark == 1 else range(args.cores, args.cores + 1)
         for ncores in cores_range:
             for batch_size in batch_sizes:
                 logging.info(f"Running experiment on {ncores}...")
@@ -111,7 +111,7 @@ if __name__ == '__main__':
         default=0,
         type=int,
         help="Set to 1 to benchmark parallel computation. In this case, explanations are distributed over cores in "
-             "range(2, args.cores).!"
+             "range(1, args.cores).!"
     )
     parser.add_argument(
         "-nruns",
