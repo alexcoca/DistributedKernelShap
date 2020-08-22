@@ -74,6 +74,7 @@ def main():
     X_explain = data['all']['X']['processed']['test'].toarray()  # instances to be explained
 
     if args.workers == -1:  # sequential benchmark
+        logging.info(f"Running sequential benchmark without ray ...")
         distributed_opts = {'batch_size': None, 'n_cpus': None, 'actor_cpu_fraction': 1.0}
         explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts=distributed_opts)
         run_explainer(explainer, X_explain, distributed_opts, nruns)
