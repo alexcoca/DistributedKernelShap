@@ -22,11 +22,11 @@ reset:
 
 upload-script:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
-	kubectl cp -n ${NAMESPACE} ../experiment.py $${POD}:experiment.py
+	kubectl cp -n ${NAMESPACE} ../benchmarks/k8s_ray_pool.py $${POD}:k8s_ray_pool.py
 
 run-experiment:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
-	kubectl exec -it -n ${NAMESPACE} $${POD} -- python -W ignore experiment.py -batch ${BATCH} -workers ${WORKERS}
+	kubectl exec -it -n ${NAMESPACE} $${POD} -- python -W ignore k8s_ray_pool.py -batch ${BATCH} -workers ${WORKERS}
 
 pull-results:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`

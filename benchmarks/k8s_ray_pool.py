@@ -63,8 +63,8 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
         The minibatch size for the current set of of `nruns`
     """
 
-    if not os.path.exists('results'):
-        os.mkdir('results')
+    if not os.path.exists('../results'):
+        os.mkdir('../results')
 
     result = {'t_elapsed': []}
     workers = distributed_opts['n_cpus']
