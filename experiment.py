@@ -66,7 +66,7 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
     if not os.path.exists('results'):
         os.mkdir('results')
 
-    result = {'t_elapsed': [], 'explanations': []}
+    result = {'t_elapsed': []}
     workers = distributed_opts['n_cpus']
     # update minibatch size
     explainer._explainer.batch_size = batch_size
@@ -77,10 +77,9 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
         t_elapsed = timer() - t_start
         logging.info(f"Time elapsed: {t_elapsed}")
         result['t_elapsed'].append(t_elapsed)
-        result['explanations'].append(explanation)
 
-    with open(get_filename(workers, batch_size), 'wb') as f:
-        pickle.dump(result, f)
+        with open(get_filename(workers, batch_size), 'wb') as f:
+            pickle.dump(result, f)
 
 
 def main():
