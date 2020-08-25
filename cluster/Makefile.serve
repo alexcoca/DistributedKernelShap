@@ -1,0 +1,34 @@
+NAMESPACE ?= kernel-shap-ray-cluster
+WORKERS ?= 2
+BATCH_MODE ?= ray
+BATCH ?= 5
+
+SHELL := /bin/bash
+
+
+.ONESHELL:
+
+deploy:
+	kubectl apply -f ray_cluster.yaml
+	kubectl rollout status deployment/ray-head -n ${NAMESPACE}
+	kubectl rollout status deployment/ray-worker -n ${NAMESPACE}
+
+destroy:
+	kubectl delete -f ray_cluster.yaml
+
+reset:
+	kubectl delete -n ${NAMESPACE} pod --all
+	kubectl rollout status deployment/ray-head -n {NAMESPACE}
+	kubectl rollout status deployment/ray-worker -n {NAMESPACE}
+
+upload-script:
+	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
+	kubectl cp -n ${NAMESPACE} ../benchmarks/k8s_serve_explanations.py $${POD}:k8s_serve_explanations.py
+
+run-experiment:
+	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
+	kubectl exec -it -n ${NAMESPACE} $${POD} -- python -W ignore k8s_serve_explanations.py -batch ${BATCH} -r ${WORKERS} -batch_mode ${BATCH_MODE}
+
+pull-results:
+	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
+	kubectl cp ${NAMESPACE}/$${POD}:/distributed_explainers/results ../results/

@@ -1,7 +1,5 @@
 import logging
-
 import os
-import sys
 
 import pickle
 from sklearn.linear_model import LogisticRegression
@@ -13,7 +11,6 @@ from explainers.utils import load_data
 This script pulls the Adult data from the ``data/`` directory and fits a logistic regression model to it. Model is 
 saved under ``assets/predictor.pkl``. 
 """
-
 
 
 def fit_adult_logistic_regression(data_dict: Dict[str, Any]):
