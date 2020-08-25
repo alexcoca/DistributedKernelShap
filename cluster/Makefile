@@ -9,16 +9,16 @@ SHELL := /bin/bash
 
 deploy:
 	kubectl apply -f ray_pool_cluster.yaml
-	kubectl rollout status deployment/ray-head -n pool-ray-cluster
-	kubectl rollout status deployment/ray-worker -n pool-ray-cluster
+	kubectl rollout status deployment/ray-head -n ${NAMESPACE}
+	kubectl rollout status deployment/ray-worker -n ${NAMESPACE}
 
 destroy:
 	kubectl delete -f ray_pool_cluster.yaml
 
 reset:
 	kubectl delete -n ${NAMESPACE} pod --all
-	kubectl rollout status deployment/ray-head -n pool-ray-cluster
-	kubectl rollout status deployment/ray-worker -n pool-ray-cluster
+	kubectl rollout status deployment/ray-head -n ${NAMESPACE}
+	kubectl rollout status deployment/ray-worker -n ${NAMESPACE}
 
 upload-script:
 	POD=`kubectl -n ${NAMESPACE} get pod -l component=ray-head -o jsonpath="{.items[0].metadata.name}"`
