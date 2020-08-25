@@ -87,7 +87,7 @@ class DistributedExplainer:
     A class that orchestrates the execution of the execution of a batch of explanations in parallel.
     """
 
-    def __init__(self, distributed_opts, cls, init_args, init_kwargs):
+    def __init__(self, distributed_opts, explainer_type, init_args, init_kwargs):
 
         self.n_jobs = distributed_opts['n_cpus']
         self.n_actors = int(distributed_opts['n_cpus'] // distributed_opts['actor_cpu_fraction'])
@@ -100,7 +100,7 @@ class DistributedExplainer:
         except KeyError:
             self.post_process_fcn = None
 
-        self.explainer = cls
+        self.explainer = explainer_type
         self.explainer_args = init_args
         self.explainer_kwargs = init_kwargs
 

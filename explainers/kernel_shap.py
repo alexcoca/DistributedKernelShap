@@ -210,7 +210,7 @@ def sum_categories(values: np.ndarray, start_idx: Sequence[int], enc_feat_dim: S
 DISTRIBUTED_OPTS = {
     'n_cpus': None,
     'batch_size': None,
-    'actor_cpu_fraction': 1.0,
+    'actor_cpu_fraction': 1.0
 }
 
 

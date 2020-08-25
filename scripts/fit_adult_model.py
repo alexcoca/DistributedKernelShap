@@ -14,7 +14,6 @@ This script pulls the Adult data from the ``data/`` directory and fits a logisti
 saved under ``assets/predictor.pkl``. 
 """
 
-sys.path.append('./utils')
 
 
 def fit_adult_logistic_regression(data_dict: Dict[str, Any]):

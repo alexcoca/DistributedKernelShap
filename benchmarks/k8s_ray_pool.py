@@ -12,6 +12,7 @@ from sklearn.metrics import accuracy_score
 from typing import Any, Dict
 from timeit import default_timer as timer
 
+
 logging.basicConfig(level=logging.INFO)
 
 
@@ -38,7 +39,7 @@ def fit_kernel_shap_explainer(clf, data: dict, distributed_opts: Dict[str, Any] 
     return explainer
 
 
-def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: int):
+def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nruns: int, batch_size: int):
     """
     Explain `X_explain` with `explainer` configured with `distributed_opts` `nruns` times in order to obtain
     runtime statistics.
@@ -58,15 +59,19 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
             'batch_size': int - the size of a minibatch into which the dateset is split
             'actor_cpu_fraction': the fraction of CPU allocated to an actor
             }
+    batch_size:
+        The minibatch size for the current set of of `nruns`
     nruns
         Number of times `X_explain` is explained for a given workers and batch size setting.
     """
 
     if not os.path.exists('./results'):
         os.mkdir('./results')
-    batch_size = distributed_opts['batch_size']
+
     result = {'t_elapsed': []}
     workers = distributed_opts['n_cpus']
+    # update minibatch size
+    explainer._explainer.batch_size = batch_size
     for run in range(nruns):
         logging.info(f"run: {run}")
         t_start = timer()
@@ -95,22 +100,12 @@ def main():
     logging.info(f"Test accuracy: {accuracy_score(y_test, predictor.predict(X_test_proc))}")
     X_explain = data['all']['X']['processed']['test'].toarray()  # instances to be explained
 
-    if args.workers == -1:  # sequential benchmark
-        logging.info(f"Running sequential benchmark without ray ...")
-        distributed_opts = {'batch_size': None, 'n_cpus': None, 'actor_cpu_fraction': 1.0}
-        explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts=distributed_opts)
-        run_explainer(explainer, X_explain, distributed_opts, nruns)
-    # run distributed benchmark or simply explain on a number of cores, depending on args.benchmark value
-    else:
-        workers_range = range(1, args.workers + 1) if args.benchmark == 1 else range(args.workers, args.workers + 1)
-        for workers in workers_range:
-            for batch_size in batch_sizes:
-                logging.info(f"Running experiment using {workers} actors...")
-                logging.info(f"Running experiment with batch size {batch_size}")
-                distributed_opts = {'batch_size': int(batch_size), 'n_cpus': workers, 'actor_cpu_fraction': 1.0}
-                explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
-                run_explainer(explainer, X_explain, distributed_opts, nruns)
-                ray.shutdown()
+    distributed_opts = {'n_cpus': args.workers}
+    explainer = fit_kernel_shap_explainer(predictor, data, distributed_opts)
+    for batch_size in batch_sizes:
+        logging.info(f"Running experiment using {args.workers} actors...")
+        logging.info(f"Batch size: {batch_size}")
+        run_explainer(explainer, X_explain, distributed_opts, nruns, batch_size)
 
 
 if __name__ == '__main__':
@@ -125,25 +120,17 @@ if __name__ == '__main__':
     parser.add_argument(
         "-w",
         "--workers",
-        default=-1,
+        default=1,
         type=int,
-        help="The number of processes to distribute the explanations dataset on. Set to -1 to run sequenential (without"
-             "ray) version."
-    )
-    parser.add_argument(
-        "-benchmark",
-        default=0,
-        type=int,
-        help="Set to 1 to benchmark parallel computation. In this case, explanations are distributed over cores in "
-             "range(1, args.workers).!"
+        help="The number of workers to distribute the explanations dataset on."
     )
     parser.add_argument(
         "-n",
         "--nruns",
         default=5,
         type=int,
-        help="Controls how many times an experiment is run (in benchmark mode) for a given number of workers to obtain "
-             "run statistics."
+
+        help="Controls how many times an experiment is run for a given number of workers to obtain run statistics."
     )
     args = parser.parse_args()
     main()

@@ -2,7 +2,7 @@
 name = "explainers"
 version = "0.1.0"
 description = "A package that uses ray to distribute KernelSHAP"
-authors = ["Alex Coca <alexcoca23@yahoo.co.uk>"]
+authors = ["alexcoca <alexcoca23@yahoo.co.uk>"]
 
 [tool.poetry.dependencies]
 python = "^3.7"
