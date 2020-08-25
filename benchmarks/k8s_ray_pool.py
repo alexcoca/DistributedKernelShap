@@ -61,6 +61,8 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
             }
     batch_size:
         The minibatch size for the current set of of `nruns`
+    nruns
+        Number of times `X_explain` is explained for a given workers and batch size setting.
     """
 
     if not os.path.exists('./results'):
@@ -115,17 +117,18 @@ if __name__ == '__main__':
         required=True,
     )
     parser.add_argument(
-        "-workers",
+        "-w",
+        "--workers",
         default=1,
         type=int,
-        help="The number of workers to distribute the explanations dataset on. Set to -1 to run sequenential version."
+        help="The number of workers to distribute the explanations dataset on."
     )
     parser.add_argument(
-        "-nruns",
+        "-n",
+        "--nruns",
         default=5,
         type=int,
-        help="Controls how many times an experiment is run (in benchmark mode) for a given number of cores to obtain "
-             "run statistics."
+        help="Controls how many times an experiment is run for a given number of workers to obtain run statistics."
     )
     args = parser.parse_args()
     main()
