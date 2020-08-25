@@ -122,10 +122,10 @@ def load_model(path: str):
         model_raw = download(MODEL_URL)
         model = pickle.load(io.BytesIO(model_raw.content))
 
-        if not os.path.exists('../assets'):
-            os.mkdir('../assets')
+        if not os.path.exists('assets'):
+            os.mkdir('assets')
 
-        with open("../assets/predictor.pkl", "wb") as f:
+        with open("assets/predictor.pkl", "wb") as f:
             pickle.dump(model, f)
 
         return model
