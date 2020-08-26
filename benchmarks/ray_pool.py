@@ -81,9 +81,6 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
 
 def main():
 
-    # initialise ray
-    ray.init(address='auto')
-
     # experiment settings
     nruns = args.nruns
     batch_sizes = [int(elem) for elem in args.batch]
