@@ -82,7 +82,7 @@ def run_explainer(explainer, X_explain: np.ndarray, distributed_opts: dict, nrun
 def main():
 
     # experiment settings
-    nruns = args.nruns
+    nruns = args.nruns if args.benchmark else 1
     batch_sizes = [int(elem) for elem in args.batch]
 
     # load data and instances to be explained
