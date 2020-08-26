@@ -1,6 +1,7 @@
 NAMESPACE ?= kernel-shap-ray-cluster
 WORKERS ?= 2
 BATCH_MODE ?= ray
+# do not pass a list of values here as they are ignored in the python script. Batch is changed via bash.
 BATCH ?= 5
 
 SHELL := /bin/bash
