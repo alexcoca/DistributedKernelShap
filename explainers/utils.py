@@ -145,7 +145,7 @@ def load_model(path: str):
         return model
     except FileNotFoundError:
         logging.info(f"Could not find model {path}. Downloading from {MODEL_URL}...")
-        model_raw = _download(path)
+        model_raw = _download(MODEL_URL)
         model = pickle.load(io.BytesIO(model_raw.content))
 
         if not os.path.exists('assets'):
