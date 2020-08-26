@@ -33,7 +33,8 @@ class KernelShapModel:
         if not hasattr(predictor, "predict_proba"):
             logging.warning("Predictor does not have predict_proba attribute, defaulting to predict")
             predict_fcn = predictor.predict
-        predict_fcn = predictor.predict_proba
+        else:
+            predict_fcn = predictor.predict_proba
         self.explainer = KernelShap(predict_fcn, **constructor_kwargs)
 
         # TODO: REFACTOR THIS TO USE THE BACKEND METHOD CALLING FUNCTIONALITY
