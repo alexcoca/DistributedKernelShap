@@ -83,7 +83,7 @@ def prepare_explainer_args(data: Dict[str, Any]) -> Tuple[str, np.ndarray, dict,
 
     groups = data['all']['groups']
     group_names = data['all']['group_names']
-    background_data = data['background']['X']['preprocessed'][:1]
+    background_data = data['background']['X']['preprocessed']
     # assert background_data.shape[0] == 100
     init_kwargs = {'link': 'logit', 'feature_names': group_names, 'seed': 0}
     fit_kwargs = {'groups': groups, 'group_names': group_names}
