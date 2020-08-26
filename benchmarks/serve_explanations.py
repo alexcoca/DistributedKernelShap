@@ -4,16 +4,15 @@ import os
 import ray
 import pickle
 import requests
-import numpy as np
 
-import explainers.wrappers as wrappers
+import numpy as np
 
 from collections import namedtuple
 from ray import serve
 from timeit import default_timer as timer
-from typing import Any, Dict, List, Tuple
-from explainers.utils import get_filename, batch, load_data, load_model
-
+from typing import Any, Dict, Tuple
+from explainers.wrappers import BatchKernelShapModel, KernelShapModel
+from explainers.utils import get_filename, load_data, load_model
 
 logging.basicConfig(level=logging.INFO)
 
@@ -21,14 +20,13 @@ PREDICTOR_URL = 'https://storage.googleapis.com/seldon-models/alibi/distributed_
 PREDICTOR_PATH = 'assets/predictor.pkl'
 """
 str: The file containing the predictor. The predictor can be created by running `fit_adult_model.py` or output by 
-calling `explainers.utils.load_model()`, which will download a default predictor if `assets/` does not contain one. 
+calling `utils.utils.load_model()`, which will download a default predictor if `assets/` does not contain one. 
 """
 
 
 def endpont_setup(tag: str, backend_tag: str, route: str = "/"):
     """
     Creates an endpoint for serving explanations.
-
     Parameters
     ----------
     tag
@@ -44,7 +42,6 @@ def endpont_setup(tag: str, backend_tag: str, route: str = "/"):
 def backend_setup(tag: str, worker_args: Tuple, replicas: int, max_batch_size: int) -> None:
     """
     Setups the backend for the distributed explanation task.
-
     Parameters
     ----------
     tag
@@ -57,12 +54,14 @@ def backend_setup(tag: str, worker_args: Tuple, replicas: int, max_batch_size: i
         Maximum number of requests to batch and send to a worker process.
     """
 
+    serve.init()
+
     if max_batch_size == 1:
         config = {'num_replicas': max(replicas, 1)}
-        serve.create_backend(tag, wrappers.KernelShapModel, *worker_args)
+        serve.create_backend(tag, KernelShapModel, *worker_args)
     else:
         config = {'num_replicas': max(replicas, 1), 'max_batch_size': max_batch_size}
-        serve.create_backend(tag, wrappers.BatchKernelShapModel, *worker_args)
+        serve.create_backend(tag, BatchKernelShapModel, *worker_args)
     serve.update_backend_config(tag, config)
 
     logging.info(f"Backends: {serve.list_backends()}")
@@ -73,12 +72,10 @@ def prepare_explainer_args(data: Dict[str, Any]) -> Tuple[str, np.ndarray, dict,
     Extracts the name of the features (group_names) and the columns corresponding to each feature in the faeture matrix
     (group_names) from the `data` dict and defines the explainer arguments. The background data necessary to initialise
     the explainer is also extracted from the same dictionary.
-
     Parameters
     ----------
     data
         A dictionary that contains all information necessary to initialise the explainer.
-
     Returns
     -------
     A tuple containing the positional and keyword arguments necessary for initialising the explainers.
@@ -86,8 +83,8 @@ def prepare_explainer_args(data: Dict[str, Any]) -> Tuple[str, np.ndarray, dict,
 
     groups = data['all']['groups']
     group_names = data['all']['group_names']
-    background_data = data['background']['X']['preprocessed']
-    assert background_data.shape[0] == 100
+    background_data = data['background']['X']['preprocessed'][:1]
+    # assert background_data.shape[0] == 100
     init_kwargs = {'link': 'logit', 'feature_names': group_names, 'seed': 0}
     fit_kwargs = {'groups': groups, 'group_names': group_names}
     predictor = load_model(PREDICTOR_URL)
@@ -97,17 +94,15 @@ def prepare_explainer_args(data: Dict[str, Any]) -> Tuple[str, np.ndarray, dict,
 
 
 @ray.remote
-def distribute_request(instance: np.ndarray, url: str = "http://localhost:8000/explain") -> str:
+def distribute_request(instance: np.ndarray, url: str = "http://localhost:8000") -> str:
     """
     Task for distributing the explanations across the backend.
-
     Parameters
     ----------
     instance
         Instance to be explained.
     url:
         The explainer URL.
-
     Returns
     -------
     A str representation of the explanation output json file.
@@ -117,18 +112,15 @@ def distribute_request(instance: np.ndarray, url: str = "http://localhost:8000/e
     return resp.json()
 
 
-def request_explanations(instances: List[np.ndarray], *, url: str) -> namedtuple:
+def explain(data: np.ndarray, *, url: str) -> namedtuple:
     """
-    Sends the instances to the explainer URL.
-
+    Sends the requests to the explainer URL. The `data` array is split into sub-array containing only one instance.
     Parameters
     ----------
-    instances:
+    data:
         Array of instances to be explained.
     url
         Explainer endpoint.
-
-
     Returns
     -------
     responses
@@ -136,28 +128,22 @@ def request_explanations(instances: List[np.ndarray], *, url: str) -> namedtuple
     """
 
     run_output = namedtuple('run_output', 'responses t_elapsed')
+    instances = np.split(data, data.shape[0])
+    logging.info(f"Explaining {len(instances)} instances!")
     tstart = timer()
     responses_id = [distribute_request.remote(instance, url=url) for instance in instances]
     responses = [ray.get(resp_id) for resp_id in responses_id]
     t_elapsed = timer() - tstart
-    logging.info(f"Time elapsed: {t_elapsed}...")
+    logging.info(f"Time elapsed: {t_elapsed}")
 
     return run_output(responses=responses, t_elapsed=t_elapsed)
 
 
-def run_explainer(X_explain: np.ndarray,
-                  n_runs: int,
-                  replicas: int,
-                  max_batch_size: int,
-                  batch_mode: str = 'ray',
-                  url: str = "http://localhost:8000/explain"):
+def distribute_explanations(n_runs: int, replicas: int, max_batch_size: int, address: str = "http://localhost:8000"):
     """
     Setup an endpoint and a backend and send requests to the endpoint.
-
     Parameters
     -----------
-    X_explain
-        Instances to be explained. Each row is an instance that is explained independently of others.
     n_runs
         Number of times to run an experiment where the entire set of explanations is sent to the explainer endpoint.
         Used to determine the average runtime given the number of cores.
@@ -165,34 +151,30 @@ def run_explainer(X_explain: np.ndarray,
         How many backend replicas should be used for distributing the workload
     max_batch_size
         The maximum batch size the explainer accepts.
-    batch_mode : {'ray', 'default'}
-        If 'ray', ray_serve components are leveraged for minibatches. Otherwise the input tensor is split into
-        minibatches which are sent to the endpoint.
-    url
-        The url of the explainer endpoint.
+    address
+        The url for the explainer endpoint.
     """
 
-    result = {'t_elapsed': [], 'explanations': []}
+    result = {'t_elapsed': []}
+    route = "explain"
+    backend_tag = "kernel_shap:b100"  # b100 means 100 background samples
+    endpoint_tag = f"{backend_tag}_endpoint"
+    data = load_data()
+    worker_args = prepare_explainer_args(data)
+    backend_setup(backend_tag, worker_args, replicas, max_batch_size)
+    endpont_setup(endpoint_tag, backend_tag, route=f"/{route}")
     # extract instances to be explained from the dataset
+    X_explain = data['all']['X']['processed']['test'].toarray()
     assert X_explain.shape[0] == 2560
-
-    # split input into separate requests
-    if batch_mode == 'ray':
-        instances = np.split(X_explain, X_explain.shape[0])  # use ray serve to batch the requests
-        logging.info(f"Explaining {len(instances)} instances...")
-    else:
-        instances = batch(X_explain, batch_size=max_batch_size)
-        logging.info(f"Explaining {len(instances)} mini-batches of size {max_batch_size}...")
-
-    # distribute it
     for run in range(n_runs):
-        logging.info(f"Experiment run: {run}...")
-        results = request_explanations(instances, url=url)
+        logging.info(f"Experiment run: {run}")
+        results = explain(X_explain, url=f"{address}/{route}")
         result['t_elapsed'].append(results.t_elapsed)
-        result['explanations'].append(results.responses)
 
-    with open(get_filename(replicas, max_batch_size), 'wb') as f:
-        pickle.dump(result, f)
+        with open(get_filename(replicas, max_batch_size, serve=True), 'wb') as f:
+            pickle.dump(result, f)
+
+    ray.shutdown()
 
 
 def main():
@@ -200,27 +182,18 @@ def main():
     if not os.path.exists('results'):
         os.mkdir('results')
 
-    data = load_data()
-    X_explain = data['all']['X']['processed']['test'].toarray()
-
-    max_batch_size = [int(elem) for elem in args.max_batch_size][0]
-    batch_mode, replicas = args.batch_mode, args.replicas
-    ray.init(address='auto')  # connect to the cluster
-    serve.init(http_host='0.0.0.0')  # listen on 0.0.0.0 to make endpoint accessible from other machines
-    host, route = os.environ.get("RAY_HEAD_SERVICE_HOST", args.host), "explain"
-    url = f"http://{host}:{args.port}/{route}"
-    backend_tag = "kernel_shap:b100"  # b100 means 100 background samples
-    endpoint_tag = f"{backend_tag}_endpoint"
-    worker_args = prepare_explainer_args(data)
-    if batch_mode == 'ray':
-        backend_setup(backend_tag, worker_args, replicas, max_batch_size)
-        logging.info(f"Batching with max_batch_size of {max_batch_size} ...")
-    else:  # minibatches are sent to the ray worker
-        backend_setup(backend_tag, worker_args, replicas, 1)
-        logging.info(f"Minibatches distributed of size {max_batch_size} ...")
-    endpont_setup(endpoint_tag, backend_tag, route=f"/{route}")
-
-    run_explainer(X_explain, args.n_runs, replicas, max_batch_size, batch_mode=batch_mode, url=url)
+    address = f"http://{args.host}:{args.port}"
+    batch_size_limits = [int(elem) for elem in args.max_batch_size]
+    if args.benchmark:
+        for replicas in range(1, args.replicas + 1):
+            logging.info(f"Running on {replicas} backend replicas!")
+            for max_batch_size in batch_size_limits:
+                logging.info(f"Batching with max_batch_size of {max_batch_size}")
+                distribute_explanations(args.nruns, replicas, max_batch_size, address=address)
+    else:
+        nruns = 1
+        for max_batch_size in batch_size_limits:
+            distribute_explanations(nruns, args.replicas, max_batch_size, address=address)
 
 
 if __name__ == '__main__':
@@ -236,21 +209,19 @@ if __name__ == '__main__':
         "-batch",
         "--max_batch_size",
         nargs='+',
-        help="A list of values representing the maximum batch size of pending queries sent to the same worker."
-             "This should only contain one element as the backend is reset from `k8s_benchmark_serve.sh`.",
+        help="A list of values representing the maximum batch size of pending queries sent to the same worker.",
         required=True,
     )
     parser.add_argument(
-        "-batch_mode",
-        type=str,
-        default='ray',
-        help="If set to 'ray' the batching will be leveraging ray serve. Otherwise, the input array is split into "
-             "minibatches that are sent to the endpoint.",
-        required=True,
+        "-benchmark",
+        default=0,
+        type=int,
+        help="Set to 1 to benchmark parallel computation. In this case, explanations are distributed over replicas in "
+             "range(1, args.replicas).!"
     )
     parser.add_argument(
         "-n",
-        "--n_runs",
+        "--nruns",
         default=5,
         type=int,
         help="Controls how many times an experiment is run (in benchmark mode) for a given number of cores to obtain "
