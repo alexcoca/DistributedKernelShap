@@ -71,7 +71,7 @@ spec:
           medium: Memory
       containers:
         - name: ray-head
-          image: alexcoca/distributedkernelshap:0.5
+          image: alexcoca/distributedkernelshap:0.6
           imagePullPolicy: Always
           command: [ "/bin/bash", "-c", "--" ]
           args:
@@ -134,7 +134,7 @@ spec:
           medium: Memory
       containers:
       - name: ray-worker
-        image: alexcoca/distributedkernelshap:0.5
+        image: alexcoca/distributedkernelshap:0.6
         imagePullPolicy: Always
         command: ["/bin/bash", "-c", "--"]
         args:

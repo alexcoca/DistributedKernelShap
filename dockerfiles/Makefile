@@ -1,7 +1,7 @@
 DOCKER_REPOSITORY ?= alexcoca
 
 IMAGE_NAME ?= distributedkernelshap
-IMAGE_VERSION ?= 0.5
+IMAGE_VERSION ?= 0.6
 
 kernel-shap-image:
 	docker build ../ -f Dockerfile -t ${IMAGE_NAME}:${IMAGE_VERSION}
