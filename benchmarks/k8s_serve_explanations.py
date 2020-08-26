@@ -172,7 +172,7 @@ def run_explainer(X_explain: np.ndarray,
         The url of the explainer endpoint.
     """
 
-    result = {'t_elapsed': [], 'explanations': []}
+    result = {'t_elapsed': []}
     # extract instances to be explained from the dataset
     assert X_explain.shape[0] == 2560
 
@@ -189,10 +189,9 @@ def run_explainer(X_explain: np.ndarray,
         logging.info(f"Experiment run: {run}...")
         results = request_explanations(instances, url=url)
         result['t_elapsed'].append(results.t_elapsed)
-        result['explanations'].append(results.responses)
 
-    with open(get_filename(replicas, max_batch_size), 'wb') as f:
-        pickle.dump(result, f)
+        with open(get_filename(replicas, max_batch_size, serve=True), 'wb') as f:
+            pickle.dump(result, f)
 
 
 def main():
