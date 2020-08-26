@@ -2,7 +2,7 @@
 START=$1
 END=$2
 BATCH_MODE=$3
-BATCH_SIZE=(1 2 5 10 15 20)
+BATCH_SIZE=(1 5 10)
 echo "Workers range tested: {$START..$END}"
 echo "Batch mode: $BATCH_MODE"
 cd ./cluster || exit
